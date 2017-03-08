@@ -55,6 +55,9 @@ How to use CircMarker
   (1) ./Candidate.txt: Recorded the circular splicing junciton of each potential circular RNA
   (2) ./Brief.txt    : Breif format of "./Candidate.txt"
 
+5: Notice: 
+  (1) The chromosome should be listed in gtf file sequencially, which means that the order should be 1,2,3,4,5 and etc. The chromosome should start at the first one.   
+
 Enjoy
 Best
 Xin
