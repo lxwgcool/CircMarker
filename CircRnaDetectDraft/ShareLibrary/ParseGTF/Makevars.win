@@ -1,0 +1,6 @@
+CXX_STD = CXX11
+PKG_OBJECTS = refGenome.o
+OBJECTS = $(PKG_OBJECTS)
+all: $(SHLIB)
+clean: 
+	rm -f $(OBJECTS)
