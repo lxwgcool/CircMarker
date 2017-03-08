@@ -14,4 +14,4 @@ Xin
 
 =============
 
-It has basically done!
+The user manual has been basically done!
