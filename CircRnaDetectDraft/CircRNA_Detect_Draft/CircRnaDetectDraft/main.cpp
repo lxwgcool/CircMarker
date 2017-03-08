@@ -12,10 +12,10 @@ using namespace std;
 
 void Test(string strFaPath);
 
-#define ONLY_DO_COMPARISON
+//#define ONLY_DO_COMPARISON
 //#define CUR_COMPARISON
 //#define SIMULATION_COMPARISON
-#define CHECK_INTERSECTION
+//#define CHECK_INTERSECTION
 
 int main(int argc, char **argv)
 {
