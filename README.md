@@ -2,6 +2,8 @@
 
 New Update: the user manual has been done. please check the readme file inside the folder "CircRnaDetectDraft" to learn how to compile and use it.
 
+Please contect: xin.li@uconn.edu if you have any questions.
+
 ==============
 Circular RNA Detection Tool
 
