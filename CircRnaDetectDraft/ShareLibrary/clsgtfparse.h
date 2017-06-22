@@ -105,6 +105,26 @@ struct St_Raw_Exon
         return bSupport;
     }
 
+    bool GetIsBothSupportCircRNA()
+    {
+        bool bSupport = false;
+        if(bRC) //反向
+        {
+            if(strHead2Bp == "AC" && strTail2Bp == "CT")
+            {
+                bSupport = true;
+            }
+        }
+        else // 正向
+        {
+            if(strHead2Bp == "AG" && strTail2Bp == "GT")
+            {
+                bSupport = true;
+            }
+        }
+        return bSupport;
+    }
+
     int GetLength()
     {
         return iEnd - iStart + 1;
@@ -189,17 +209,27 @@ class ClsGTFParse
 public:
     ClsGTFParse();
 
+private:
+    string m_strGtfPath;
+    string m_strDNARefPath;
+    int m_iKmerLen;
+    int m_iReadLen;
+    float m_fKmerRatio;
+
 public:
-    bool ReadGTF(string strFilePath, vector<St_Row_Chrom>& vChrom);
+    void Init(string strGtfPath, string strDNARefPath, int iKmerLen, int iReadLen, float fKmerRatio);
 
-    void GetRNARef(string strDNARef, string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bExportSeq=true);
+    bool ReadGTF(vector<St_Row_Chrom>& vChrom);
 
-    void LoadRNARef(string strRNARef, vector<St_Raw_Gene>& vGenes, bool bLoadSeq=false);
+    //-->For debug vaficiation
+    void GetRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bExportSeq=true);
+    void LoadRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bLoadSeq=false);
+    //<--
 
-    void GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio, int iKmerLen,
-                     vector<St_Row_Chrom>& vChrom);
+    void GetTagValue(vector<St_Row_Chrom>& vChrom); //This Tag means: the cicular splicing tag.
+                                                    //Pre 2bps before exon, and Later 2bps after exon.
 
-    void ColletcPossibleCRNA(vector<St_Raw_Gene>& vGenes);
+    //void ColletcPossibleCRNA(vector<St_Raw_Gene>& vGenes);
 };
 
 #endif // CLSGTFPARSE_H

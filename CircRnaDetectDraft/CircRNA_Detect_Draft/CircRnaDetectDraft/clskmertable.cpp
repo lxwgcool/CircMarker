@@ -41,7 +41,7 @@ void ClsKmerTable::CreateKmerTable(string strDNARef, int iReadsLen, float fKmerR
         {
             //cout << itrRef->strName << endl;
             string strRefName = "";
-            if(itrRef->strName.find(' ') == -1)
+            if(itrRef->strName.find(' ') == string::npos)
                 strRefName = itrRef->strName;
             else
                 strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));

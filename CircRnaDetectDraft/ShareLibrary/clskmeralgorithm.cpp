@@ -5,7 +5,7 @@
 unsigned int ConvertKmerToNum32(string strKmer) // The maximun length is 16
 {
     unsigned int iValue = 0;
-    for(int i = 0; i < strKmer.length(); i++)
+    for(unsigned int i = 0; i < strKmer.length(); i++)
     {
         if(strKmer[i] == 'A' ||  strKmer[i] == 'a') // 0
         {
@@ -26,6 +26,7 @@ unsigned int ConvertKmerToNum32(string strKmer) // The maximun length is 16
         else
         {
             cout << "Abnormal Kmer String" << endl;
+            cout << strKmer << endl;
             return -1;
         }
 
@@ -41,7 +42,7 @@ unsigned int ConvertKmerToNum32(string strKmer) // The maximun length is 16
 uint64_t ConvertKmerToNum64(string strKmer)
 {
     uint64_t iValue = 0;
-    for(int i = 0; i < strKmer.length(); i++)
+    for(unsigned int i = 0; i < strKmer.length(); i++)
     {
         if(strKmer[i] == 'A' ||  strKmer[i] == 'a') // 0
         {

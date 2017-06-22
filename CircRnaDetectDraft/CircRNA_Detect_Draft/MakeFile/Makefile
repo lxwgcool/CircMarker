@@ -1,6 +1,6 @@
 SharedLibraryPath=../../ShareLibrary/
-BAMTOOLS=$(SharedLibraryPath)bamtools/include
-BAMTOOLS_LD=$(SharedLibraryPath)bamtools/lib
+#BAMTOOLS=$(SharedLibraryPath)bamtools/include
+#BAMTOOLS_LD=$(SharedLibraryPath)bamtools/lib
 
 #RootPath = ../ScaffoldGapFillerTest/
 #NeedleManPath = ../Depends/needleman_wunsch/
@@ -11,7 +11,8 @@ BAMTOOLS_LD=$(SharedLibraryPath)bamtools/lib
 
 CC = g++
 INC_DIR = $(SharedLibraryPath) #Identify include path
-CFLAGS = -O3 -Wall -static -I$(BAMTOOLS) -L$(BAMTOOLS_LD) -Wl,-rpath,$(BAMTOOLS_LD)
+#CFLAGS = -O3 -Wall -static -I$(BAMTOOLS) -L$(BAMTOOLS_LD) -Wl,-rpath,$(BAMTOOLS_LD)
+CFLAGS = -O3 -Wall -static
 LIBS += -lz
 LIBS += -lpthread
 #INCLUDEPATH += tr1/memory
@@ -29,8 +30,8 @@ clsfastareader.o: $(SharedLibraryPath)clsfastareader.cpp $(SharedLibraryPath)cls
 clsfastqreader.o: $(SharedLibraryPath)clsfastqreader.cpp $(SharedLibraryPath)clsfastqreader.h
 	$(CC) $(CFLAGS) -c $(SharedLibraryPath)clsfastqreader.cpp
 
-clsbwa.o : $(SharedLibraryPath)clsbwa.cpp $(SharedLibraryPath)clsbwa.h
-	$(CC) $(CFLAGS) -c $(SharedLibraryPath)clsbwa.cpp
+#clsbwa.o : $(SharedLibraryPath)clsbwa.cpp $(SharedLibraryPath)clsbwa.h
+#	$(CC) $(CFLAGS) -c $(SharedLibraryPath)clsbwa.cpp
 
 clsgtfparse.o: $(SharedLibraryPath)clsgtfparse.cpp $(SharedLibraryPath)clsgtfparse.h
 	$(CC) $(CFLAGS) -c $(SharedLibraryPath)clsgtfparse.cpp
@@ -59,9 +60,13 @@ clstroubleshoot.o: ../CircRnaDetectDraft/clstroubleshoot.cpp ../CircRnaDetectDra
 main.o: ../CircRnaDetectDraft/main.cpp 
 	$(CC) $(CFLAGS) -c ../CircRnaDetectDraft/main.cpp
 
-CircRnaDetectDraft: clsbasealgorithm.o clsfastareader.o clsfastqreader.o clsbwa.o clsgtfparse.o clsreadconfigini.o clskmeralgorithm.o clsconfig.o clsfindcandidate.o clskmertable.o clsresultcomparison.o clstroubleshoot.o main.o 
-	$(CC) $(CFLAGS) -o CircRnaDetectDraft clsbasealgorithm.o clsfastareader.o clsfastqreader.o clsbwa.o clsgtfparse.o clsreadconfigini.o clskmeralgorithm.o clsconfig.o clsfindcandidate.o clskmertable.o clsresultcomparison.o clstroubleshoot.o main.o \
-	-lbamtools -lz
+#CircRnaDetectDraft: clsbasealgorithm.o clsfastareader.o clsfastqreader.o clsbwa.o clsgtfparse.o clsreadconfigini.o clskmeralgorithm.o clsconfig.o clsfindcandidate.o clskmertable.o clsresultcomparison.o clstroubleshoot.o main.o 
+#	$(CC) $(CFLAGS) -o CircRnaDetectDraft clsbasealgorithm.o clsfastareader.o clsfastqreader.o clsbwa.o clsgtfparse.o clsreadconfigini.o clskmeralgorithm.o clsconfig.o clsfindcandidate.o clskmertable.o clsresultcomparison.o clstroubleshoot.o main.o \
+#	-lbamtools -lz
+
+CircRnaDetectDraft: clsbasealgorithm.o clsfastareader.o clsfastqreader.o clsgtfparse.o clsreadconfigini.o clskmeralgorithm.o clsconfig.o clsfindcandidate.o clskmertable.o clsresultcomparison.o clstroubleshoot.o main.o 
+	$(CC) $(CFLAGS) -o CircRnaDetectDraft clsbasealgorithm.o clsfastareader.o clsfastqreader.o clsgtfparse.o clsreadconfigini.o clskmeralgorithm.o clsconfig.o clsfindcandidate.o clskmertable.o clsresultcomparison.o clstroubleshoot.o main.o -lz -lpthread
+
 
 RM-F := rm -f
 .PHONY : all deps objs clean veryclean rebuild info

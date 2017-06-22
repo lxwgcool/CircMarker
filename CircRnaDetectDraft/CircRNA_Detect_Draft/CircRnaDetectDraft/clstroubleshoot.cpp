@@ -1,5 +1,4 @@
 #include "clstroubleshoot.h"
-#include "../../ShareLibrary/clsbasealgorithm.h"
 
 ClsTroubleShoot::ClsTroubleShoot()
 {
@@ -10,8 +9,9 @@ ClsTroubleShoot::~ClsTroubleShoot()
 
 }
 
+#ifdef USEBWA
 void ClsTroubleShoot::CheckBWAMappingResult(string strBamFilePath)
-{    
+{
     ofstream ofsStart;
     ofsStart.open("./Start_Support_Reads.txt");
     ofstream ofsEnd;
@@ -92,4 +92,5 @@ void ClsTroubleShoot::CheckBWAMappingResult(string strBamFilePath)
     ofsStart.close();
     ofsEnd.close();
 }
+#endif
 

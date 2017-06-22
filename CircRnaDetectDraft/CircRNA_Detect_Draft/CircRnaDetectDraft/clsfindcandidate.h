@@ -30,7 +30,7 @@ struct St_Candidate
     }
 
     St_Candidate(unsigned char V1, int V2, int V3, int V4=1, bool V5=false,
-                 En_CircType V6=ctMax, string V7="")
+                 En_CircType V6=ctMax, string V7="xx")
     {
         ucChromIndex = V1;
         iStartPos = V2;
@@ -38,7 +38,7 @@ struct St_Candidate
         iSupportNum = V4;
         bRC = V5;
         enCircType = V6;
-        strTag = "xx";
+        strTag = V7;
     }
 
     void SetChromStartEnd(unsigned char V1, int V2, int V3, int V4=1)
@@ -169,14 +169,13 @@ public:
 
 private:
     bool CheckSampling(unsigned int* arrySamplingKmer,
-                       map<unsigned int, vector<St_PosInfo> >& mpKT,
-                       vector<St_Row_Chrom>& vChrom);
+                       map<unsigned int, vector<St_PosInfo> >& mpKT);
 
     void CheckHitForCurReads(string& strSeq, bool bSeqRC,
                              map<unsigned int, vector<St_PosInfo> >& mpKT,
                              vector<St_Row_Chrom>& vChrom, float fKmerRatio);
     bool CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vector<St_Row_Chrom>& vChrom);
-    bool CheckRegularCircRNA(St_HitCase* pHitCase, int iReadLen, vector<St_Row_Chrom>& vChrom);
+    bool CheckRegularCircRNA(St_HitCase* pHitCase, vector<St_Row_Chrom>& vChrom);
 
     void RefineCandiate(int iMinSupportReads);
 

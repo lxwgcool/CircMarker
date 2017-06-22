@@ -124,7 +124,7 @@ void ClsFindCandidate::CheckHitting( string strReads1Path, string strReads2Path,
             arrySamplingKmer[i] = ConvertKmerToNum32(strTmp);
         }
         //   ii) Check how may could be found back in vChrom
-        if(CheckSampling(arrySamplingKmer, mpKT, vChrom))
+        if(CheckSampling(arrySamplingKmer, mpKT))
         {
             strCurSeq = itr->strSeq;
         }
@@ -135,7 +135,7 @@ void ClsFindCandidate::CheckHitting( string strReads1Path, string strReads2Path,
                 string strTmp = GetReverseCompelement(itr->strSeq.substr(itr->strSeq.length()*ARRYPOSRATIO[i], KMERLEN));
                 arrySamplingKmer[i] = ConvertKmerToNum32(strTmp);
             }
-            if(CheckSampling(arrySamplingKmer, mpKT, vChrom))
+            if(CheckSampling(arrySamplingKmer, mpKT))
             {
                 strCurSeq = GetReverseCompelement(itr->strSeq);
                 bSeqRC = true;
@@ -228,8 +228,7 @@ void ClsFindCandidate::AssembleReads(string strReads1Path, string strReads2Path,
 
 //这里有一个需要注意：reads反向过来进行比对，依然符合我们最简单的判断的归类方式
 bool ClsFindCandidate::CheckSampling( unsigned int* arrySamplingKmer,
-                                      map<unsigned int, vector<St_PosInfo> >& mpKT,
-                                      vector<St_Row_Chrom>& vChrom )
+                                      map<unsigned int, vector<St_PosInfo> >& mpKT)
 {
     int iHitNumber = 0;
     for(int i = 0; i< SAMPLINGNUM; i++)
@@ -254,7 +253,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
 
     //1: Collect Hit Time and Info Order
     //cout << "Collect Hit Time and Info Order" << endl;
-    for(int i = 0 ; i <= (strSeq.length() - KMERLEN + 1); i++)
+    for(unsigned int i = 0 ; i <= (strSeq.length() - KMERLEN + 1); i++)
     {
         string strCurKmer = strSeq.substr(i, KMERLEN);
         unsigned int uiKmer = ConvertKmerToNum32(strCurKmer);
@@ -445,7 +444,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
             cout << "<" << IntToStr(stExon.iStart) << ", " << IntToStr(stExon.iEnd) << "> - "
                  << IntToStr(stExon.GetLength()) << ", ";
         }
-        cout << endl;
+        cout << endl;bSeqRC
 #endif
 
         if(pHitCase == NULL)
@@ -544,17 +543,18 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
         // 3.1: Potential Self-circular RNA
         bool bFind = CheckSelfCircRNA(pHitCase, strSeq.length(), vChrom);
 
-        //For debug
-        /*
+        //For debug        
         if(bFind)
         {
+            /*
             St_PosInfo& stPI = pHitCase->vHitExons[0].stPI;
             St_Raw_Exon& stCurExon = vChrom.at(stPI.ucChromIndex).vRG.at(stPI.uiGeneIndex).vRT.at(stPI.ucTranscriptIndex).vRExon.at(stPI.ucExonIndex);
             if(stCurExon.iStart == 26156109 && stCurExon.iEnd == 26156321)
             {
                 cout << "<26156109, 26156321>: " << strSeq << endl;
             }
-        }*/
+            */
+        }
     }
     else if(pHitCase->vHitExons.size() > 1)
     {
@@ -562,7 +562,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
         cout << "CheckRegularCircRNA<<<<<<" << endl;
 #endif
         // 3.2: Potential Regular-Circular RNA
-        bool bFind = CheckRegularCircRNA(pHitCase, strSeq.length(), vChrom);
+        bool bFind = CheckRegularCircRNA(pHitCase, vChrom);
 
         //For Debug
 
@@ -637,6 +637,10 @@ bool ClsFindCandidate::CheckHitPart(vector<St_Row_Chrom>& vChrom, St_HitCase* pH
         cout << stCurExon1.GetLength() << " -- Hit Num: " << itr->iCount << endl;
     }*/
 
+    //-->Just for erase the warnning
+    if(bSeqRC)
+    {}
+    //<--
 
     int iBoundLen = strSeq.length() * fKmerRatio;
     int iLimit = 2 * iBoundLen + KMERLEN*2 - 1;
@@ -1123,7 +1127,7 @@ bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vect
         return false;
 }
 
-bool ClsFindCandidate::CheckRegularCircRNA(St_HitCase* pHitCase, int iReadLen,
+bool ClsFindCandidate::CheckRegularCircRNA(St_HitCase* pHitCase,
                                            vector<St_Row_Chrom>& vChrom)
 {
     //Get the direction of gene    

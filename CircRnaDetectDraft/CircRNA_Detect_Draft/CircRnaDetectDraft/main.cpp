@@ -7,7 +7,7 @@
 #include "clsfindcandidate.h"
 #include "clsresultcomparison.h"
 #include "clstroubleshoot.h"
-
+#include "string.h"
 using namespace std;
 
 void Test(string strFaPath);
@@ -51,10 +51,11 @@ int main(int argc, char **argv)
     //   Get the information: Chromosn, Gene, Transcript, and Exon
     vector<St_Row_Chrom> vChrom;
     ClsGTFParse* pGTFParse = new ClsGTFParse();
-    pGTFParse->ReadGTF(stConfig.strGtfPath, vChrom); //Done
+    pGTFParse->Init(stConfig.strGtfPath, stConfig.strRefPath, KMERLEN,
+                    stConfig.iReadsLen, stConfig.fKmerRatio);
+    pGTFParse->ReadGTF(vChrom); //Done
 //#ifndef ONLY_DO_COMPARISON
-    pGTFParse->GetTagValue(stConfig.strRefPath, stConfig.iReadsLen, stConfig.fKmerRatio, KMERLEN,
-                           vChrom);
+    pGTFParse->GetTagValue(vChrom);
 //#endif
     delete pGTFParse;
     pGTFParse = NULL;
@@ -234,7 +235,7 @@ void Test(string strFaPath)
     if(cT == 2)
         cout << "I am 2" << endl;
     else
-        cout << "Fuck" << endl;
-    int i = 0;
+        cout << "Hi" << endl;
+    //int i = 0;
 }
 

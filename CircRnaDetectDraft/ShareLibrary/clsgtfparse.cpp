@@ -8,15 +8,26 @@
 #include "clsbasealgorithm.h"
 #include "clsfastareader.h"
 
-#define DEBUG
 
-ClsGTFParse::ClsGTFParse()
+//#define DEBUG
+
+ClsGTFParse::ClsGTFParse(): m_strGtfPath(""), m_strDNARefPath(""), m_iKmerLen(-1), m_iReadLen(-1),
+                            m_fKmerRatio(-1)
 {
 }
 
-bool ClsGTFParse::ReadGTF(string strFilePath, vector<St_Row_Chrom>& vChrom)
+void ClsGTFParse::Init(string strGtfPath, string strDNARefPath, int iKmerLen, int iReadLen, float fKmerRatio)
 {
-    if(::access(strFilePath.c_str(), 0) != 0)
+    m_strGtfPath = strGtfPath;
+    m_strDNARefPath = strDNARefPath;
+    m_iKmerLen = iKmerLen;
+    m_iReadLen = iReadLen;
+    m_fKmerRatio = fKmerRatio;
+}
+
+bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
+{
+    if(::access(m_strGtfPath.c_str(), 0) != 0)
     {
         cout << "Error: GTF File fail to be detected!" << endl;
         return false;
@@ -25,7 +36,7 @@ bool ClsGTFParse::ReadGTF(string strFilePath, vector<St_Row_Chrom>& vChrom)
     vChrom.clear();
     //Parse the contig file
     ifstream infile;
-    infile.open(strFilePath.c_str(), ios::in);
+    infile.open(m_strGtfPath.c_str(), ios::in);
     string strLine = "";
     string strCurChromName = "";
 
@@ -247,12 +258,12 @@ bool ClsGTFParse::ReadGTF(string strFilePath, vector<St_Row_Chrom>& vChrom)
 }
 
 //-->The format of this "RefRNA" is identified by us!!!
-void ClsGTFParse::GetRNARef(string strDNARef, string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bExportSeq)
+void ClsGTFParse::GetRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bExportSeq)
 {
     //Read DNA Ref
     ClsFastaReader* pFastaReader = new ClsFastaReader();
     vector<St_Fasta> vFasta;
-    pFastaReader->ReadFastaRegular(strDNARef, vFasta);
+    pFastaReader->ReadFastaRegular(m_strDNARefPath, vFasta);
     delete pFastaReader;
     pFastaReader = NULL;
 
@@ -313,14 +324,14 @@ void ClsGTFParse::GetRNARef(string strDNARef, string strRNARefPath, vector<St_Ra
 }
 
 // Default: do NOT load sequence info
-void ClsGTFParse::LoadRNARef(string strRNARef, vector<St_Raw_Gene>& vGenes, bool bLoadSeq)
+void ClsGTFParse::LoadRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bLoadSeq)
 {
     vGenes.clear();
 
     //Load RNA Ref File
     ClsFastaReader* pFastaReader = new ClsFastaReader();
     vector<St_Fasta> vFasta;
-    pFastaReader->ReadFastaRegular(strRNARef, vFasta, bLoadSeq);
+    pFastaReader->ReadFastaRegular(strRNARefPath, vFasta, bLoadSeq);
     delete pFastaReader;
     pFastaReader = NULL;
 
@@ -391,7 +402,7 @@ void ClsGTFParse::LoadRNARef(string strRNARef, vector<St_Raw_Gene>& vGenes, bool
 
         iStart = 0;
 
-        while(strTemp.find('(', iStart) != -1)
+        while(strTemp.find('(', iStart) != string::npos)
         {
             //For exon start
             iStart = strTemp.find('(', iStart) + 1;
@@ -418,17 +429,13 @@ void ClsGTFParse::LoadRNARef(string strRNARef, vector<St_Raw_Gene>& vGenes, bool
 
     vFasta.clear();
 }
-void ClsGTFParse::GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio, int iKmerLen,
-                              vector<St_Row_Chrom>& vChrom)
-{
-    //Get Boundary Length
-    int iExtractLen = iReadsLen * fKmerRatio + iKmerLen - 1;
-
+void ClsGTFParse::GetTagValue(vector<St_Row_Chrom>& vChrom) //This Tag means: the cicular splicing tag
+{    
     //Read DNN Reference
     //Read DNA Ref
     ClsFastaReader* pFastaReader = new ClsFastaReader();
     vector<St_Fasta> vFasta;
-    pFastaReader->ReadFastaRegular(strDNARef, vFasta);
+    pFastaReader->ReadFastaRegular(m_strDNARefPath, vFasta);
     delete pFastaReader;
     pFastaReader = NULL;
 
@@ -445,7 +452,7 @@ void ClsGTFParse::GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio,
         {
             //cout << itrRef->strName << endl;
             string strRefName = "";
-            if(itrRef->strName.find(' ') == -1)
+            if(itrRef->strName.find(' ') == string::npos)
                 strRefName = itrRef->strName;
             else
                 strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));
@@ -508,13 +515,15 @@ void ClsGTFParse::GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio,
                         //cout << itrExon->strTail2Bp << endl;
                         //cout << "Done--->" << endl;
 #ifdef DEBUG
+                        //Get Boundary Length
+                        int iExtractLen = m_iReadLen * m_fKmerRatio + m_iKmerLen - 1;
                         if(itrExon->iStart == 1191425 && itrExon->iEnd == 1191505)
                         {
                             //看看本身的长度--> 将相应的形成kmer的那一段拿出来
-                            if(itrExon->GetLength() <= 2 * iReadsLen * fKmerRatio + iKmerLen*2 - 1)
+                            if(itrExon->GetLength() <= 2 * m_iReadLen * m_fKmerRatio + m_iKmerLen*2 - 1)
                             {
                                 //stPosInfo.cPart = 'U';
-                                iExtractLen = (itrExon->GetLength() - iKmerLen)/2 + iKmerLen;
+                                iExtractLen = (itrExon->GetLength() - m_iKmerLen)/2 + m_iKmerLen;
                             }
 
                             if(bShowEndExonInfo)
@@ -552,10 +561,10 @@ void ClsGTFParse::GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio,
                         if(itrExon->iStart == 1203242 && itrExon->iEnd == 1203372)
                         {
                             //看看本身的长度--> 将相应的形成kmer的那一段拿出来
-                            if(itrExon->GetLength() <= 2 * iReadsLen * fKmerRatio + iKmerLen*2 - 1)
+                            if(itrExon->GetLength() <= 2 * m_iReadLen * m_fKmerRatio + m_iKmerLen*2 - 1)
                             {
                                 //stPosInfo.cPart = 'U';
-                                iExtractLen = (itrExon->GetLength() - iKmerLen)/2 + iKmerLen;
+                                iExtractLen = (itrExon->GetLength() - m_iKmerLen)/2 + m_iKmerLen;
                             }
 
                             if(bShowStartExonInfo)
@@ -596,10 +605,6 @@ void ClsGTFParse::GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio,
         }
     }
 
-    //release reference sequence
-    vFasta.clear();
-
-
     //Print Out the Collection Result    
     ofstream ofs;
     ofs.open("./gtf_brif.txt");
@@ -623,76 +628,88 @@ void ClsGTFParse::GetTagValue(string strDNARef, int iReadsLen, float fKmerRatio,
                         << " | " << itrExon->strTail2Bp << " " << (itrExon->bRC ? "-" : "+")
                         << "   <" << IntToStr(itrExon->iStart) << ", " << IntToStr(itrExon->iEnd) << ">"
                         << " Len: " << IntToStr(abs(itrExon->iEnd - itrExon->iStart)) << endl;
+
+                    //-->Display Exon Sequence
+                    ofs << "Seq:" << endl;
+                    string strExonSeq = vFasta[atoi(itrChrom->strName.c_str()) - 1].strSeq.substr(itrExon->iStart-1, itrExon->GetLength());
+                    DisplayString(ofs, strExonSeq);
+                    ofs << endl;
+                    //<--
+
                     iIndex++;
                 }
             }
         }
     }
+
+    //release reference sequence
+    vFasta.clear();
+
     ofs.close();
 }
 
-void ClsGTFParse::ColletcPossibleCRNA(vector<St_Raw_Gene>& vGenes)
-{
-    /*
-    vector<St_Raw_Exon> vHeadExon;
-    vector<int> vHeadIndex;
-    vector<St_Raw_Exon> vTailExon;
-    vector<int> vTailIndex;
-    St_CandiAtom stAtom;
-    int iIndex = 0;
-    for(vector<St_Raw_Gene>::iterator itr = vGenes.begin(); itr != vGenes.end(); itr++)
-    {
-        for(vector<St_Raw_Transcript>::iterator itrRT = itr->vRT.begin(); itrRT != itr->vRT.end(); itrRT++)
-        {
-            vHeadExon.clear();
-            vHeadIndex.clear();
-            vTailExon.clear();
-            vTailIndex.clear();
-            iIndex = 0;
-            for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin(); itrExon != itrRT->vRExon.end(); itrExon++)
-            {
-                //For Head Exon
-                if(itrExon->GetIsCRNAHeadExon())
-                {
-                    vHeadExon.push_back(*itrExon);
-                    vHeadIndex.push_back(iIndex);
-                }
-                //For Tail Exon
-                if(itrExon->GetIsCRNATailExon())
-                {
-                    vTailExon.push_back(*itrExon);
-                    vTailIndex.push_back(iIndex);
-                }
-                iIndex++;
-            }
-            //Create Possible Transcription Exon Pair
-            if(vHeadExon.empty() || vTailExon.empty())
-                continue;  //Next Transcript
-            //begin detection possible CRNA Exon Pair --->
-            for(int i=0; i<vHeadExon.size(); i++)
-            {
-                for(int j=0; j<vTailExon.size(); j++)
-                {
-                    if(vHeadIndex[i] <= vTailIndex[j]) // 头在尾巴的前面(重合也是允许的)
-                    {
-                        int iStart = vHeadExon[i].iStart;
-                        int iEnd = vTailExon[j].iEnd;
-                        if(iStart <= iEnd)
-                        {
-                            stAtom.iStart =iStart;
-                            stAtom.iEnd =iEnd;
-                        }
-                        else //Switch the value
-                        {
-                            stAtom.iStart =iEnd;
-                            stAtom.iEnd =iStart;
-                        }
-                        itrRT->vPossibleCRNA.push_back(stAtom);
-                    }
-                }
-            }
-            //<--
-        }
-    }*/
-}
+//void ClsGTFParse::ColletcPossibleCRNA(vector<St_Raw_Gene>& vGenes)
+//{
+//    /*
+//    vector<St_Raw_Exon> vHeadExon;
+//    vector<int> vHeadIndex;
+//    vector<St_Raw_Exon> vTailExon;
+//    vector<int> vTailIndex;
+//    St_CandiAtom stAtom;
+//    int iIndex = 0;
+//    for(vector<St_Raw_Gene>::iterator itr = vGenes.begin(); itr != vGenes.end(); itr++)
+//    {
+//        for(vector<St_Raw_Transcript>::iterator itrRT = itr->vRT.begin(); itrRT != itr->vRT.end(); itrRT++)
+//        {
+//            vHeadExon.clear();
+//            vHeadIndex.clear();
+//            vTailExon.clear();
+//            vTailIndex.clear();
+//            iIndex = 0;
+//            for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin(); itrExon != itrRT->vRExon.end(); itrExon++)
+//            {
+//                //For Head Exon
+//                if(itrExon->GetIsCRNAHeadExon())
+//                {
+//                    vHeadExon.push_back(*itrExon);
+//                    vHeadIndex.push_back(iIndex);
+//                }
+//                //For Tail Exon
+//                if(itrExon->GetIsCRNATailExon())
+//                {
+//                    vTailExon.push_back(*itrExon);
+//                    vTailIndex.push_back(iIndex);
+//                }
+//                iIndex++;
+//            }
+//            //Create Possible Transcription Exon Pair
+//            if(vHeadExon.empty() || vTailExon.empty())
+//                continue;  //Next Transcript
+//            //begin detection possible CRNA Exon Pair --->
+//            for(int i=0; i<vHeadExon.size(); i++)
+//            {
+//                for(int j=0; j<vTailExon.size(); j++)
+//                {
+//                    if(vHeadIndex[i] <= vTailIndex[j]) // 头在尾巴的前面(重合也是允许的)
+//                    {
+//                        int iStart = vHeadExon[i].iStart;
+//                        int iEnd = vTailExon[j].iEnd;
+//                        if(iStart <= iEnd)
+//                        {
+//                            stAtom.iStart =iStart;
+//                            stAtom.iEnd =iEnd;
+//                        }
+//                        else //Switch the value
+//                        {
+//                            stAtom.iStart =iEnd;
+//                            stAtom.iEnd =iStart;
+//                        }
+//                        itrRT->vPossibleCRNA.push_back(stAtom);
+//                    }
+//                }
+//            }
+//            //<--
+//        }
+//    }*/
+//}
 

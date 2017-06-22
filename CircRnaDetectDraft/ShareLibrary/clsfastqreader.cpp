@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include "clsbasealgorithm.h"
-#include "./FastqFileParse/kseq.h"
+#include "../ShareLibrary/clsbasealgorithm.h"
+#include "../ShareLibrary/FastqFileParse/kseq.h"
 KSEQ_INIT(gzFile, gzread)
 
 ClsFastqReader::ClsFastqReader()

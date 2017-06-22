@@ -1101,6 +1101,10 @@ void ClsResultComparison::CompareFindCircWithCircBaseResult( vector<St_Row_Chrom
     vector<St_Candidate> vCandiFindCirc;
     ParseFindCircResult(strFindCircPath, vCandiFindCirc);  // do not -1
 
+    //-->In order to erase warnning
+    if(vChrom.empty())
+    {}
+    //<--
     /*
     ///--->Additional Code
     ///Erase the candidate which do not constructed with the boundary of exon
@@ -2075,7 +2079,7 @@ void ClsResultComparison::ParseCIRIResult(string strCIRIPath, vector<St_Candidat
                                                   iPosSecondSplit - iPosFirstSplit - 1).c_str());
         stCandi.iEndPos = atoi(strValue.substr(iPosSecondSplit + 1, strValue.length() -
                                                                 iPosSecondSplit - 1).c_str());
-        if(strLine.find('+') >= 0)
+        if(strLine.find('+') != string::npos)
             stCandi.bRC = false;
         else
             stCandi.bRC = true;
@@ -2120,7 +2124,7 @@ void ClsResultComparison::ParseCircExplorerResult(string strCIRCexplorerPath,
         stCandi.iEndPos = atoi(strLine.substr(iStart, iLen).c_str());
 
         //For Direction
-        if(strLine.find('+', iStart) >= 0)
+        if(strLine.find('+', iStart) != string::npos)
             stCandi.bRC = false;
         else
             stCandi.bRC = true;
@@ -2163,7 +2167,7 @@ void ClsResultComparison::ParseFindCircResult(string strFindCircPath, vector<St_
         stCandi.iEndPos = atoi(strLine.substr(iStart, iLen).c_str());
 
         //For Direction
-        if(strLine.find('+', iStart) >= 0)
+        if(strLine.find('+', iStart) != string::npos)
             stCandi.bRC = false;
         else
             stCandi.bRC = true;

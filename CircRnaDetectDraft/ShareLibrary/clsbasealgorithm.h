@@ -1,12 +1,23 @@
 /******************This is head file (*.h) of basical function**************
  * *************************************************************************/
+
 #ifndef CLSBASEALGORITHM_H
 #define CLSBASEALGORITHM_H
+
+//#define USEBWA
+
 #include <string>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
 using namespace std;
-#include "bamtools/include/api/BamReader.h"
-using namespace BamTools;
+
+#ifdef USEBWA
+    #include "bamtools/include/api/BamReader.h"
+    using namespace BamTools;
+#endif
+
 
 string& ltrim(string &str);
 string& rtrim(string &str);
