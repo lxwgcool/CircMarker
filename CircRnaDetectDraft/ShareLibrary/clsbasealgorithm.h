@@ -45,7 +45,7 @@ bool CheckNPos(char cCurChar);
 
 string GetStringItemValue(string& strValue, string::size_type sztpPos, bool bForward, char cSplit = ' ');
 
-string GetRatio(float fValue, int iPrecision=2);
+string GetRatio(float fValue, int iPrecision=2, bool bPrintSymbol=true);
 
 void GetAllFilesInFolder(vector<string>& vFileName, const char* czFolderPath);
 

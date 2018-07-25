@@ -1,4 +1,5 @@
 #include "clsfastareader.h"
+#include "clsbasealgorithm.h"
 #include "unistd.h" // For API: "access"
 #include <iostream>
 #include <fstream>
@@ -61,6 +62,8 @@ int ClsFastaReader::ReadFastaRegular(string& strPath, vector<St_Fasta>& vFasta, 
         {
             if(bRecordSeq)
             {
+                //convert every string to Upper Case
+                ToUpper(strLine);
                 stFasta.strSeq += strLine;
             }
         }

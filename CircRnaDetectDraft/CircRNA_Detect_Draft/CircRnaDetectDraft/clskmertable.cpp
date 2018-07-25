@@ -9,91 +9,60 @@ ClsKmerTable::ClsKmerTable()
 
 ClsKmerTable::~ClsKmerTable()
 {
-    m_mpKT.clear();
+//    m_mpKT.clear();
 }
 
-void ClsKmerTable::CreateKmerTable(string strDNARef, int iReadsLen, float fKmerRatio,
-                                   vector<St_Row_Chrom>& vChrom)
+void ClsKmerTable::CreateKmerTable(map<unsigned int, vector<St_PosInfo> >& mpKT,
+                                   string strDNARef, int iReadsLen, float fKmerRatio,
+                                   St_Row_Chrom* pRowChrom, St_Fasta* pRef, int iChromIndex)
 {
     //Get paramter
     int iBoundLen = iReadsLen * fKmerRatio;
 
-    //Read Fasta:
-    ClsFastaReader* pFastaReader = new ClsFastaReader();
-    vector<St_Fasta> vFasta;
-    pFastaReader->ReadFastaRegular(strDNARef, vFasta);
-    delete pFastaReader;
-    pFastaReader = NULL;
-
     //Create Kmer Table:
     //Get tag value for each exon
     St_PosInfo stPosInfo;
-    m_mpKT.clear();
+    mpKT.clear();
+//    m_mpKT.clear();
 
-    stPosInfo.ucChromIndex = 0;
+    stPosInfo.ucChromIndex = iChromIndex;
     //I just remember: (1)the chrmosone should be consecutive,
     //                 (2) only the chromosone which could be found back in reference will be used for Kmer Table
-    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
+
+    stPosInfo.uiGeneIndex = 0;
+    for(vector<St_Raw_Gene>::iterator itrGene = pRowChrom->vRG.begin();
+        itrGene != pRowChrom->vRG.end(); itrGene++)
     {
-        St_Fasta* pCurRefFa = NULL;
 
-        for(vector<St_Fasta>::iterator itrRef = vFasta.begin(); itrRef != vFasta.end(); itrRef++)
+        //Get corresponding reference sequence
+        stPosInfo.ucTranscriptIndex = 0;
+        for(vector<St_Raw_Transcript>::iterator itrRT = itrGene->vRT.begin();
+            itrRT != itrGene->vRT.end(); itrRT++)
         {
-            //cout << itrRef->strName << endl;
-            string strRefName = "";
-            if(itrRef->strName.find(' ') == string::npos)
-                strRefName = itrRef->strName;
-            else
-                strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));
-            //cout << "strRefName: " << strRefName << endl;
-
-            if(strRefName == itrChrom->strName)
+            stPosInfo.ucExonIndex = 0;
+            for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin();
+                itrExon != itrRT->vRExon.end(); itrExon++)
             {
-                pCurRefFa = &(*itrRef);
-                break;
-            }            
-        }
-        if(pCurRefFa == NULL)
-        {
-            cout << "Do not find related reference chromosone: " << itrChrom->strName << endl;
-            stPosInfo.ucChromIndex++;
-            continue;
-        }
-
-        stPosInfo.uiGeneIndex = 0;
-        for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin();
-            itrGene != itrChrom->vRG.end(); itrGene++)
-        {
-
-            //Get corresponding reference sequence
-            stPosInfo.ucTranscriptIndex = 0;
-            for(vector<St_Raw_Transcript>::iterator itrRT = itrGene->vRT.begin();
-                itrRT != itrGene->vRT.end(); itrRT++)
-            {
-                stPosInfo.ucExonIndex = 0;
-                for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin();
-                    itrExon != itrRT->vRExon.end(); itrExon++)
+                if(itrExon->iStart > itrExon->iEnd)
                 {
-                    if(itrExon->iStart > itrExon->iEnd)
-                    {
-                        cout << "Exon Start > End, Strange!" << endl;
-                    }
-                    else
-                    {
-                        CollectKmerInfo(pCurRefFa, &(*itrExon), stPosInfo, iBoundLen);
-                    }
-                    stPosInfo.ucExonIndex++;
+                    cout << "Exon Start > End, Strange!" << endl;
                 }
-                stPosInfo.ucTranscriptIndex++;
+                else
+                {
+                    CollectKmerInfo(mpKT, pRef, &(*itrExon), stPosInfo, iBoundLen);
+                }
+                stPosInfo.ucExonIndex++;
             }
-            stPosInfo.uiGeneIndex++;
+            stPosInfo.ucTranscriptIndex++;
         }
-        stPosInfo.ucChromIndex++;
+        stPosInfo.uiGeneIndex++;
     }
+    stPosInfo.ucChromIndex++;
 }
 
 //我们在建立Kmer表的时候并没有特别去考虑相应的RC或者regular的direction的区别问题，也就是一样的对待
-void ClsKmerTable::CollectKmerInfo(St_Fasta* pCurRefFa, St_Raw_Exon* pExon,
+void ClsKmerTable::CollectKmerInfo(map<unsigned int, vector<St_PosInfo> >& mpKT,
+                                   St_Fasta* pCurRefFa, St_Raw_Exon* pExon,
                                    St_PosInfo& stPosInfo, int iBoundLen)
 {
 
@@ -119,7 +88,7 @@ void ClsKmerTable::CollectKmerInfo(St_Fasta* pCurRefFa, St_Raw_Exon* pExon,
             else
                 stPosInfo.cPart = 'E';
             string strCurKmer = pCurRefFa->strSeq.substr(i, KMERLEN);
-            InsertCurKmer(strCurKmer, stPosInfo);
+            InsertCurKmer(mpKT, strCurKmer, stPosInfo);
         }
     }
     else // Exon的长度足够去进行左右两边的采样 --> 那我们开始吧
@@ -129,7 +98,7 @@ void ClsKmerTable::CollectKmerInfo(St_Fasta* pCurRefFa, St_Raw_Exon* pExon,
         for(int i = pExon->iStart - 1; i<= pExon->iStart + iBoundLen - 1; i++)
         {
             string strCurKmer = pCurRefFa->strSeq.substr(i, KMERLEN);
-            InsertCurKmer(strCurKmer, stPosInfo);
+            InsertCurKmer(mpKT, strCurKmer, stPosInfo);
         }
         //对于当前eoxn的end <--
         stPosInfo.cPart = 'E';
@@ -137,25 +106,27 @@ void ClsKmerTable::CollectKmerInfo(St_Fasta* pCurRefFa, St_Raw_Exon* pExon,
         for(int i = iStart; i<= iStart + iBoundLen; i++)
         {
             string strCurKmer = pCurRefFa->strSeq.substr(i, KMERLEN);
-            InsertCurKmer(strCurKmer, stPosInfo);
+            InsertCurKmer(mpKT, strCurKmer, stPosInfo);
         }
     }
 }
 
-void ClsKmerTable::InsertCurKmer(string strCurKmer, St_PosInfo& stPosInfo) //只是不把exon中的还有N的kmer去建立表
+void ClsKmerTable::
+InsertCurKmer(map<unsigned int, vector<St_PosInfo> >& mpKT,
+                                 string strCurKmer, St_PosInfo& stPosInfo) //只是不把exon中的还有N的kmer去建立表
 {
     if(strCurKmer.find('n') != string::npos || strCurKmer.find('N') != string::npos )
         return;
 
     unsigned int uiKmer = ConvertKmerToNum32(strCurKmer);
 
-    if(m_mpKT.find(uiKmer) == m_mpKT.end()) // 找不到
+    if(mpKT.find(uiKmer) == mpKT.end()) // 找不到
     {
-        m_mpKT[uiKmer].push_back(stPosInfo);
+        mpKT[uiKmer].push_back(stPosInfo);
     }
     else
     {
-        vector<St_PosInfo>& vPosInfo = m_mpKT[uiKmer];
+        vector<St_PosInfo>& vPosInfo = mpKT[uiKmer];
         if( find(vPosInfo.begin(), vPosInfo.end(), stPosInfo) == vPosInfo.end() ) // 找不到
         {
             vPosInfo.push_back(stPosInfo);
@@ -163,7 +134,7 @@ void ClsKmerTable::InsertCurKmer(string strCurKmer, St_PosInfo& stPosInfo) //只
     }
 }
 
-map<unsigned int, vector<St_PosInfo> >& ClsKmerTable::GetKT()
-{
-    return m_mpKT;
-}
+//map<unsigned int, vector<St_PosInfo> >& ClsKmerTable::GetKT()
+//{
+//    return m_mpKT;
+//}

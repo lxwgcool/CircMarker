@@ -90,17 +90,15 @@ ClsFindCandidate::ClsFindCandidate():m_iTotalNum(0), m_iRegNum(0)
  * Notice:
  * (1) 我们不需要将reads强行转成大写，因为去进行kmer table 查找的时候总是需要转换成int32去查找的
  */
-void ClsFindCandidate::CheckHitting( string strReads1Path, string strReads2Path,
-                                     int iMinSupportReads, float fKmerRatio,
-                                     map<unsigned int, vector<St_PosInfo> >& mpKT,
-                                     vector<St_Row_Chrom>& vChrom )
+void ClsFindCandidate::CheckHitting(int iMinSupportReads, float fKmerRatio, int iReadsLen,
+                                    map<unsigned int, vector<St_PosInfo> >& mpKT,
+                                    vector<St_Row_Chrom>& vChrom,
+                                    vector<St_Fastq>& vFastq, string strChromName)
 {           
-    cout << endl << "------------------CheckHitting------------------" << endl << endl;
+    //cout << endl << "------------------CheckHitting------------------" << endl << endl;
 
-    //1: Read Reads
-    vector<St_Fastq> vFastq;
-    AssembleReads(strReads1Path, strReads2Path, vFastq);
-
+    vector<St_Candidate> vSelfCircCandi;
+    vector<St_Candidate> vRegCircCandi;
 
     //2: Iterator each reads
     unsigned int arrySamplingKmer[SAMPLINGNUM];
@@ -109,6 +107,9 @@ void ClsFindCandidate::CheckHitting( string strReads1Path, string strReads2Path,
     {
         //(1) delete all of reads contain letter 'N'
         if(itr->strSeq.find('N') != string::npos) // 这个表示找到了
+            continue;
+
+        if(itr->strSeq.length() < iReadsLen - 10)
             continue;
 
         //如果没有N
@@ -146,7 +147,9 @@ void ClsFindCandidate::CheckHitting( string strReads1Path, string strReads2Path,
         if(strCurSeq != "")
         {
             // Go Further Deteciton ->Go
-            CheckHitForCurReads(strCurSeq, bSeqRC, mpKT, vChrom, fKmerRatio);
+            //cout << strCurSeq << endl;
+            CheckHitForCurReads(strCurSeq, bSeqRC, mpKT, vChrom, fKmerRatio,
+                                vSelfCircCandi, vRegCircCandi);
         }
     }
 
@@ -172,55 +175,56 @@ void ClsFindCandidate::CheckHitting( string strReads1Path, string strReads2Path,
         }
     }*/
 
-    cout << "g_EE     --> " << IntToStr(g_EE) << endl;
-    cout << "g_ES     --> " << IntToStr(g_ES) << endl;
-    cout << "g_SS     --> " << IntToStr(g_SS) << endl;
-    cout << "g_SE     --> " << IntToStr(g_SE) << endl;
-    cout << "g_else   --> " << IntToStr(g_else) << endl;
-    cout << "g_large1 --> " << IntToStr(g_large1) << endl;
+//    cout << "g_EE     --> " << IntToStr(g_EE) << endl;
+//    cout << "g_ES     --> " << IntToStr(g_ES) << endl;
+//    cout << "g_SS     --> " << IntToStr(g_SS) << endl;
+//    cout << "g_SE     --> " << IntToStr(g_SE) << endl;
+//    cout << "g_else   --> " << IntToStr(g_else) << endl;
+//    cout << "g_large1 --> " << IntToStr(g_large1) << endl;
 
-    RefineCandiate(iMinSupportReads);
+    RefineCandiate(iMinSupportReads, vSelfCircCandi, vRegCircCandi, strChromName);
 }
 
 void ClsFindCandidate::AssembleReads(string strReads1Path, string strReads2Path, vector<St_Fastq>& vFastq)
 {
     //1: Reads1 是必须有值的
     ClsFastqReader* pFqReader = new ClsFastqReader();
-    pFqReader->ReadFastqFile(strReads1Path, vFastq, true); // --> ture --> 转成全大写
+    pFqReader->ReadFastqFile(strReads1Path, vFastq, false); // 在这里我们不强制转换成大写！
+    pFqReader->ReadFastqFile(strReads2Path, vFastq, false); // 在这里我们不强制转换成大写！
 
-    if(vFastq.empty())
-    {
-        delete pFqReader;
-        pFqReader = NULL;
-        return;
-    }
+//    if(vFastq.empty())
+//    {
+//        delete pFqReader;
+//        pFqReader = NULL;
+//        return;
+//    }
 
-    //2: 如果Reads2 也有值：我们读出来之后去跟reads1取一部分拼接到一起，然后将组成的新的结果塞给vFastq中
-    if(strReads2Path != "")
-    {
-        int iReadsLen = vFastq[0].strSeq.length();
+//    //2: 如果Reads2 也有值：我们读出来之后去跟reads1取一部分拼接到一起，然后将组成的新的结果塞给vFastq中
+//    if(strReads2Path != "")
+//    {
+//        int iReadsLen = vFastq[0].strSeq.length();
 
-        vector<St_Fastq> vAdditionalFastq;
-        pFqReader->ReadFastqFile(strReads2Path, vAdditionalFastq, true);
-        if(vAdditionalFastq.size() == vFastq.size()) // 确定他们都是一对一的关系
-        {
-            vector<St_Fastq> vTempFastq;
-            vTempFastq.resize(vAdditionalFastq.size());
-            for(unsigned int i = 0; i < vAdditionalFastq.size(); i++)
-            {
-                vTempFastq.at(i).strName = IntToStr(i);
-                vTempFastq.at(i).strComments = "+";
-                vTempFastq.at(i).strQuality = "...";
-                //第一个的头和第二个的头合并到一起
-                vTempFastq.at(i).strSeq = vFastq.at(i).strSeq.substr(0, iReadsLen/2) +
-                                          GetReverseCompelement(vAdditionalFastq.at(i).strSeq).substr(0, iReadsLen/2);
-            }
-            //Merge into vFastq
-            vFastq.insert(vFastq.end(), vTempFastq.begin(), vTempFastq.end());
-            vTempFastq.clear();
-        }
-        vAdditionalFastq.clear();
-    }
+//        vector<St_Fastq> vAdditionalFastq;
+//        pFqReader->ReadFastqFile(strReads2Path, vAdditionalFastq, true);
+//        if(vAdditionalFastq.size() == vFastq.size()) // 确定他们都是一对一的关系
+//        {
+//            vector<St_Fastq> vTempFastq;
+//            vTempFastq.resize(vAdditionalFastq.size());
+//            for(unsigned int i = 0; i < vAdditionalFastq.size(); i++)
+//            {
+//                vTempFastq.at(i).strName = IntToStr(i);
+//                vTempFastq.at(i).strComments = "+";
+//                vTempFastq.at(i).strQuality = "...";
+//                //第一个的头和第二个的头合并到一起
+//                vTempFastq.at(i).strSeq = vFastq.at(i).strSeq.substr(0, iReadsLen/2) +
+//                                          GetReverseCompelement(vAdditionalFastq.at(i).strSeq).substr(0, iReadsLen/2);
+//            }
+//            //Merge into vFastq
+//            vFastq.insert(vFastq.end(), vTempFastq.begin(), vTempFastq.end());
+//            vTempFastq.clear();
+//        }
+//        vAdditionalFastq.clear();
+//    }
 
     delete pFqReader;
     pFqReader = NULL;
@@ -246,13 +250,36 @@ bool ClsFindCandidate::CheckSampling( unsigned int* arrySamplingKmer,
 
 void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
                                            map<unsigned int, vector<St_PosInfo> >& mpKT,
-                                           vector<St_Row_Chrom>& vChrom, float fKmerRatio)
+                                           vector<St_Row_Chrom>& vChrom, float fKmerRatio,
+                                           vector<St_Candidate>& vSelfCircCandi,
+                                           vector<St_Candidate>& vRegCircCandi)
 {
     //不能用只考虑最高两组的想法，因为者们以来，我们会忽略掉一些跨了两个以上exon的reads
     vector<St_HitCase> vCases;
 
-    //1: Collect Hit Time and Info Order
-    //cout << "Collect Hit Time and Info Order" << endl;
+//    //1: Collect Hit Time and Info Order
+//    cout << "Collect Hit Time and Info Order" << endl;
+//    cout << "mpKT size: " << mpKT.size() << endl;
+//    cout << "vChrom Size: " << vChrom.size() << endl;
+//    cout << "We got size!" << endl;
+
+
+//    int iTemp = 0;
+//    for(map<unsigned int, vector<St_PosInfo> >::iterator itr = mpKT.begin(); itr != mpKT.end(); itr++)
+//    {
+//        if(iTemp > 10)
+//            break;
+
+//        cout << "---" << endl;
+//        cout << itr->first << endl;
+//        cout << IntToStr(itr->second.begin()->ucChromIndex) << " --- "
+//             << IntToStr(itr->second.begin()->ucTranscriptIndex) << endl;
+//        cout << "---" << endl;
+
+//        iTemp++;
+//    }
+
+//    cout << "Collect Cases" << endl;
     for(unsigned int i = 0 ; i <= (strSeq.length() - KMERLEN + 1); i++)
     {
         string strCurKmer = strSeq.substr(i, KMERLEN);
@@ -260,6 +287,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
         if(mpKT.find(uiKmer) == mpKT.end())
             continue;
         //Can find it
+ //       cout << strCurKmer << endl;
         for(vector<St_PosInfo>::iterator itr = mpKT[uiKmer].begin(); itr != mpKT[uiKmer].end(); itr++)
         {
             if(vCases.empty()) // 第一次搞起
@@ -302,10 +330,13 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
                 {
                     int iCutHitExonLen = vChrom.at(itr->ucChromIndex).vRG.at(itr->uiGeneIndex).vRT.at(itr->ucTranscriptIndex).vRExon.at(itr->ucExonIndex).GetLength();
                     vCases.push_back(St_HitCase(*itr, 1, iCutHitExonLen));
+               //     cout << "Get New Case: " << itr->ucChromIndex << " " << itr->ucTranscriptIndex << endl;
                 }
             }
         }
     }
+
+//    cout << "Step 1 finished" << endl;
 
 #ifdef DEBUG
     ///这里我们debug一下--> 将包含两个目标exon的这样的reads输出 -->
@@ -433,7 +464,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
     for(vector<St_HitCase>::iterator itr = vCases.begin(); itr != vCases.end(); itr++)
     {
 
-#ifdef DEBUG
+//#ifdef DEBUG
         cout << IntToStr(itr->GetHitSum()) << " --> " ;
         //output the related exons
         for(vector<St_HitExon>::iterator itrExon = itr->vHitExons.begin();
@@ -444,8 +475,8 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
             cout << "<" << IntToStr(stExon.iStart) << ", " << IntToStr(stExon.iEnd) << "> - "
                  << IntToStr(stExon.GetLength()) << ", ";
         }
-        cout << endl;bSeqRC
-#endif
+        cout << endl;
+//#endif
 
         if(pHitCase == NULL)
             pHitCase = &(*itr);
@@ -506,6 +537,21 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
             pHitCase->vHitExons.erase(itr);
     }
 
+//#ifdef DEBUG
+    //Cout Best Hit case
+    cout << endl << "Best Hit Case --> " << endl;
+    cout << IntToStr(pHitCase->GetHitSum()) << " --> " ;
+    for(vector<St_HitExon>::iterator itrExon = pHitCase->vHitExons.begin();
+        itrExon != pHitCase->vHitExons.end(); itrExon++)
+    {
+        St_PosInfo& stPI = itrExon->stPI;
+        St_Raw_Exon& stExon = vChrom.at(stPI.ucChromIndex).vRG.at(stPI.uiGeneIndex).vRT.at(stPI.ucTranscriptIndex).vRExon.at(stPI.ucExonIndex);
+        cout << "<" << IntToStr(stExon.iStart) << ", " << IntToStr(stExon.iEnd) << "> - "
+             << IntToStr(stExon.GetLength()) << ", ";
+    }
+    cout << "<----" << endl;
+//#endif
+
     //2: Make filter based on the TWO threshoulds
     //Threashold 1: 针对hit多少去进行抉择: Get threshold --> fKmerRatio
     bool bTheasholdHitNum = CheckHitNum(strSeq, fKmerRatio, pHitCase);
@@ -541,7 +587,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
         cout << "CheckSelfCircRNA>>>>>>>" << endl;
 #endif
         // 3.1: Potential Self-circular RNA
-        bool bFind = CheckSelfCircRNA(pHitCase, strSeq.length(), vChrom);
+        bool bFind = CheckSelfCircRNA(pHitCase, strSeq.length(), vChrom, vSelfCircCandi);
 
         //For debug        
         if(bFind)
@@ -562,7 +608,8 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
         cout << "CheckRegularCircRNA<<<<<<" << endl;
 #endif
         // 3.2: Potential Regular-Circular RNA
-        bool bFind = CheckRegularCircRNA(pHitCase, vChrom);
+        St_Candidate stCandiRecord;
+        bool bFind = CheckRegularCircRNA(pHitCase, vChrom, stCandiRecord, vRegCircCandi);
 
         //For Debug
 
@@ -578,17 +625,31 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
             St_PosInfo& stPI2 = pHitCase->vHitExons[1].stPI;
             St_Raw_Exon& stCurExon2 = vChrom.at(stPI2.ucChromIndex).vRG.at(stPI2.uiGeneIndex).vRT.at(stPI2.ucTranscriptIndex).vRExon.at(stPI2.ucExonIndex);
 
-            if( stCurExon1.iStart == 46659946 && stCurExon1.iEnd == 46660073 &&  //这里的是小的
-                stCurExon2.iStart == 46660225 && stCurExon2.iEnd == 46660323 )   //这里的是大的
-            {
-                cout << IntToStr(stPI1.ucChromIndex) << ", " << IntToStr(stPI1.uiGeneIndex) << ", "
-                     << IntToStr(stPI1.ucTranscriptIndex) << ", " << IntToStr(stPI1.ucExonIndex) << endl;
-                cout << IntToStr(stPI2.ucChromIndex) << ", " << IntToStr(stPI2.uiGeneIndex) << ", "
-                     << IntToStr(stPI2.ucTranscriptIndex) << ", " << IntToStr(stPI2.ucExonIndex) << endl;
-                cout << IntToStr(abs(46660225 - 46660073)) << endl;
-                cout << "<46659946, 46660073>: " << strSeq << endl;
-                cout << strSeq << endl;
-            }
+
+//            cout << "Donor(Start, End) & Acceptor(Start, End): "
+//                 << "(" << IntToStr(stCurExon1.iStart) << ", " << IntToStr(stCurExon1.iEnd) << ")"
+//                 << " -- "
+//                 << "(" << IntToStr(stCurExon2.iStart) << ", " << IntToStr(stCurExon2.iEnd) << ")" << endl;
+
+//            cout << "Candi Start & End: "<< IntToStr(stCandiRecord.iStartPos) << " : "
+//                 << IntToStr(stCandiRecord.iEndPos) << endl;
+
+//            cout << "RC: " << (stCandiRecord.bRC ? "Yes" : "No") << endl;
+
+//            cout << "Current Reads: " << (bSeqRC ? "RC" : "Reg") << endl
+//                 << strSeq << endl << endl;
+
+//            if( stCurExon1.iStart == 46659946 && stCurExon1.iEnd == 46660073 &&  //这里的是小的
+//                stCurExon2.iStart == 46660225 && stCurExon2.iEnd == 46660323 )   //这里的是大的
+//            {
+//                cout << IntToStr(stPI1.ucChromIndex) << ", " << IntToStr(stPI1.uiGeneIndex) << ", "
+//                     << IntToStr(stPI1.ucTranscriptIndex) << ", " << IntToStr(stPI1.ucExonIndex) << endl;
+//                cout << IntToStr(stPI2.ucChromIndex) << ", " << IntToStr(stPI2.uiGeneIndex) << ", "
+//                     << IntToStr(stPI2.ucTranscriptIndex) << ", " << IntToStr(stPI2.ucExonIndex) << endl;
+//                cout << IntToStr(abs(46660225 - 46660073)) << endl;
+//                cout << "<46659946, 46660073>: " << strSeq << endl;
+//                cout << strSeq << endl;
+//            }
         }
     }
     else
@@ -1008,7 +1069,8 @@ bool ClsFindCandidate::CheckHitPart(vector<St_Row_Chrom>& vChrom, St_HitCase* pH
     }
 }
 
-bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vector<St_Row_Chrom>& vChrom)
+bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen,
+                                        vector<St_Row_Chrom>& vChrom, vector<St_Candidate>& vSelfCircCandi)
 {    
     St_PosInfo& stPI = pHitCase->vHitExons[0].stPI;
     St_Raw_Exon& stCurExon = vChrom.at(stPI.ucChromIndex).vRG.at(stPI.uiGeneIndex).vRT.at(stPI.ucTranscriptIndex).vRExon.at(stPI.ucExonIndex);
@@ -1050,8 +1112,8 @@ bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vect
 
             //--->For vector
             bool bFind = false;
-            for(vector<St_Candidate>::iterator itr = m_vSelfCircCandi.begin();
-                itr != m_vSelfCircCandi.end(); itr++)
+            for(vector<St_Candidate>::iterator itr = vSelfCircCandi.begin();
+                itr != vSelfCircCandi.end(); itr++)
             {
                 if(*itr == stCurCandi)
                 {
@@ -1062,7 +1124,7 @@ bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vect
             }
             if(!bFind) //找不到
             {
-                m_vSelfCircCandi.push_back(stCurCandi);
+                vSelfCircCandi.push_back(stCurCandi);
 
                 /*
                 //outout the tag result
@@ -1128,7 +1190,8 @@ bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vect
 }
 
 bool ClsFindCandidate::CheckRegularCircRNA(St_HitCase* pHitCase,
-                                           vector<St_Row_Chrom>& vChrom)
+                                           vector<St_Row_Chrom>& vChrom,
+                                           St_Candidate& stCandiRecord, vector<St_Candidate>& vRegCircCandi)
 {
     //Get the direction of gene    
     int iChromIndex = pHitCase->vHitExons.begin()->stPI.ucChromIndex;
@@ -1291,8 +1354,8 @@ bool ClsFindCandidate::CheckRegularCircRNA(St_HitCase* pHitCase,
 
         //--->For vector
         bool bFind = false;
-        for(vector<St_Candidate>::iterator itr = m_vRegCircCandi.begin();
-            itr != m_vRegCircCandi.end(); itr++)
+        for(vector<St_Candidate>::iterator itr = vRegCircCandi.begin();
+            itr != vRegCircCandi.end(); itr++)
         {
             if(*itr == stCurCandi)
             {
@@ -1307,8 +1370,10 @@ bool ClsFindCandidate::CheckRegularCircRNA(St_HitCase* pHitCase,
             {
                 //UpdateCurCandiForRegularDirection(pHitCase, vChrom, stCurCandi);
             }
-            m_vRegCircCandi.push_back(stCurCandi);
+            vRegCircCandi.push_back(stCurCandi);
         }
+
+        stCandiRecord = stCurCandi;
         //<---
 
         /*
@@ -1563,28 +1628,30 @@ void ClsFindCandidate::UpdateCurCandiForRegularDirection(St_HitCase* pHitCase,
     }
 }
 
-void ClsFindCandidate::RefineCandiate(int iMinSupportReads)
+void ClsFindCandidate::RefineCandiate(int iMinSupportReads,
+                                      vector<St_Candidate>& vSelfCircCandi,
+                                      vector<St_Candidate>& vRegCircCandi, string strChromName)
 {   
     //make the filter for self circ Candi and Ref Circ Candi
     ///For self circle
-    if(!m_vSelfCircCandi.empty())
+    if(!vSelfCircCandi.empty())
     {
-        for(vector<St_Candidate>::iterator itr = m_vSelfCircCandi.end() - 1;
-            itr >= m_vSelfCircCandi.begin(); itr--)
+        for(vector<St_Candidate>::iterator itr = vSelfCircCandi.end() - 1;
+            itr >= vSelfCircCandi.begin(); itr--)
         {
             if(itr->iSupportNum < iMinSupportReads)
-                m_vSelfCircCandi.erase(itr);
+                vSelfCircCandi.erase(itr);
         }
     }
 
     ///For regular circle
-    if(!m_vRegCircCandi.empty())
+    if(!vRegCircCandi.empty())
     {
-        for(vector<St_Candidate>::iterator itr = m_vRegCircCandi.end() - 1;
-            itr >= m_vRegCircCandi.begin(); itr--)
+        for(vector<St_Candidate>::iterator itr = vRegCircCandi.end() - 1;
+            itr >= vRegCircCandi.begin(); itr--)
         {
             if(itr->iSupportNum < iMinSupportReads)
-                m_vRegCircCandi.erase(itr);
+                vRegCircCandi.erase(itr);
         }
     }
 
@@ -1610,24 +1677,26 @@ void ClsFindCandidate::RefineCandiate(int iMinSupportReads)
     }*/
 
     ofstream ofs;
-    ofs.open("./Candidate.txt");
+    string strName = "./Detection_Result/Candidate_" + strChromName + ".txt";
+    ofs.open(strName.c_str());
 
     ofstream ofsBrief; // 这个是为了解析起来比较方便的文件
-    ofsBrief.open("./Brief.txt");
+    strName = "./Detection_Result/Brief_" + strChromName + ".txt";
+    ofsBrief.open(strName.c_str());
 
     //1: Statistic Result
     ofs << "=============Statistic Number=============" <<endl;
-    ofs << "Self Circular RNA   : " << IntToStr(m_vSelfCircCandi.size()) << endl;
-    ofs << "Regular Circular RNA: " << IntToStr(m_vRegCircCandi.size()) << endl << endl;
+    ofs << "Self Circular RNA   : " << IntToStr(vSelfCircCandi.size()) << endl;
+    ofs << "Regular Circular RNA: " << IntToStr(vRegCircCandi.size()) << endl << endl;
 
     //2: For the full set of Self Circular RNA
     ofs << "=============Self Circular RNA=============" <<endl;
-    for(vector<St_Candidate>::iterator itr = m_vSelfCircCandi.begin(); itr != m_vSelfCircCandi.end(); itr++)
+    for(vector<St_Candidate>::iterator itr = vSelfCircCandi.begin(); itr != vSelfCircCandi.end(); itr++)
     {
-        ofs << IntToStr(itr->ucChromIndex) << "\t"
+        ofs << strChromName << "\t"
              << "<" << IntToStr(itr->iStartPos) << ", " << IntToStr(itr->iEndPos) << ">"
              << "\t" << IntToStr(itr->iSupportNum) << endl;
-        ofsBrief << IntToStr(itr->ucChromIndex) << " "
+        ofsBrief << strChromName << " "
                  << IntToStr(itr->iStartPos) << " " << IntToStr(itr->iEndPos) << " "
                  << IntToStr(itr->iSupportNum) << " "
                  << itr->strTag << " "
@@ -1646,13 +1715,13 @@ void ClsFindCandidate::RefineCandiate(int iMinSupportReads)
 
     //3: For the full set of Regular Circular RNA
     ofs << endl << "=============Regular Circular RNA=============" <<endl;
-    for(vector<St_Candidate>::iterator itr = m_vRegCircCandi.begin(); itr != m_vRegCircCandi.end(); itr++)
+    for(vector<St_Candidate>::iterator itr = vRegCircCandi.begin(); itr != vRegCircCandi.end(); itr++)
     {
-        ofs << IntToStr(itr->ucChromIndex) << "\t"
+        ofs << strChromName << "\t"
              << "<" << IntToStr(itr->iStartPos) << ", " << IntToStr(itr->iEndPos) << ">"
              << "\t" << IntToStr(itr->iSupportNum) << endl;
 
-        ofsBrief << IntToStr(itr->ucChromIndex) << " "
+        ofsBrief << strChromName << " "
                  << IntToStr(itr->iStartPos) << " " << IntToStr(itr->iEndPos) << " "
                  << IntToStr(itr->iSupportNum) << " "
                  << itr->strTag << " "

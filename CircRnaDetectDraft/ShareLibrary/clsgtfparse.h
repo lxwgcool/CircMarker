@@ -26,6 +26,11 @@ struct St_CandiAtom //Circular RNA Candidate Atom
     }
 };*/
 
+enum En_GeneBioType{gbtCoding, gbtPT, gbtRI, gbtAantisense, gbtNMD, gbtUP, dgbtNonCoding, gbtMax};
+const string GENEBIOTYPE[gbtMax] = {"protein_coding", "processed_transcript",
+                                    "retained_intron", "antisense", "nonsense_mediated_decay",
+                                    "unprocessed_pseudogene","Others"};
+
 struct St_Raw_Exon
 {
     int iStart;
@@ -167,6 +172,7 @@ struct St_Raw_Gene
     int iStart;
     int iEnd;
     bool bRC;
+    string strBioType;
     vector<St_Raw_Transcript> vRT; // Raw Transcript
 
     St_Raw_Gene()
@@ -176,6 +182,7 @@ struct St_Raw_Gene
         iStart = -1;
         iEnd = -1;
         bRC = false;
+        strBioType = "";
     }
 
     void Refresh()
@@ -185,13 +192,14 @@ struct St_Raw_Gene
         iStart = -1;
         iEnd = -1;
         bRC = false;
+        strBioType = "";
         vRT.clear();
     }
 };
 
 struct St_Row_Chrom
 {
-    string strName;
+    string strName;    
     vector<St_Raw_Gene> vRG; //Row Gene
 
     St_Row_Chrom(): strName("")
@@ -219,10 +227,11 @@ private:
 public:
     void Init(string strGtfPath, string strDNARefPath, int iKmerLen, int iReadLen, float fKmerRatio);
 
-    bool ReadGTF(vector<St_Row_Chrom>& vChrom);
+    bool ReadGTF(vector<St_Row_Chrom>& vChrom, string strGtfPath="");
 
     //-->For debug vaficiation
-    void GetRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bExportSeq=true);
+    void GetRNARef(string strRNARefPath, string strChromName,
+                   vector<St_Raw_Gene>& vGenes, bool bExportSeq=true);
     void LoadRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bLoadSeq=false);
     //<--
 

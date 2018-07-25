@@ -246,13 +246,22 @@ string GetStringItemValue(string& strValue, string::size_type sztpPos, bool bFor
     }
 }
 
-string GetRatio(float fValue, int iPrecision)
+string GetRatio(float fValue, int iPrecision, bool bPrintSymbol)
 {
     char czValue[16];
-    memset(czValue, 0, 16);
-    string strFormate = "%." + IntToStr(iPrecision) + "f";
-    sprintf(czValue, strFormate.c_str(), fValue*100);
-    return czValue + (string)"%";
+    memset(czValue, 0, 16);    
+    if(bPrintSymbol)
+    {
+        string strFormate = "%." + IntToStr(iPrecision) + "f";
+        sprintf(czValue, strFormate.c_str(), fValue*100);
+        return czValue + (string)"%";
+    }
+    else // the dot is based on value%.
+    {
+        string strFormate = "%." + IntToStr(iPrecision + 2) + "f";
+        sprintf(czValue, strFormate.c_str(), fValue);
+        return czValue;
+    }
 }
 
 //czFolderPath --> 搜索的目录

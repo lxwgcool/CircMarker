@@ -10,13 +10,15 @@
 
 
 //#define DEBUG
+//#define PRINGTFSEQ
 
 ClsGTFParse::ClsGTFParse(): m_strGtfPath(""), m_strDNARefPath(""), m_iKmerLen(-1), m_iReadLen(-1),
                             m_fKmerRatio(-1)
 {
 }
 
-void ClsGTFParse::Init(string strGtfPath, string strDNARefPath, int iKmerLen, int iReadLen, float fKmerRatio)
+void ClsGTFParse::Init(string strGtfPath, string strDNARefPath, int iKmerLen,
+                       int iReadLen, float fKmerRatio)
 {
     m_strGtfPath = strGtfPath;
     m_strDNARefPath = strDNARefPath;
@@ -25,8 +27,13 @@ void ClsGTFParse::Init(string strGtfPath, string strDNARefPath, int iKmerLen, in
     m_fKmerRatio = fKmerRatio;
 }
 
-bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
+bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom, string strGtfPath)
 {
+    if(strGtfPath != "")
+    {
+        m_strGtfPath = strGtfPath;
+    }
+
     if(::access(m_strGtfPath.c_str(), 0) != 0)
     {
         cout << "Error: GTF File fail to be detected!" << endl;
@@ -48,8 +55,8 @@ bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
     while(!infile.eof()) // check if reached the end of file
     {
         getline(infile, strLine);
-        int iPos = strLine.find('\t');
-        if(iPos == -1)
+        string::size_type iPos = strLine.find('\t');
+        if(iPos == string::npos)
             continue;
 
         int iStart = 0;
@@ -135,6 +142,12 @@ bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
         iPos = strValue.find("\"", iStart);
         string strGeneName = strValue.substr(iStart, iPos - iStart);
 
+        //10.4 Gene Biotype --> this is important to distinguish the coding gene and non-coding gene
+        iPos = strValue.find("gene_biotype");
+        iStart = strValue.find("\"", iPos) + 1;
+        iPos = strValue.find("\"", iStart);
+        string strGeneBioType = strValue.substr(iStart, iPos - iStart);
+
         if(strType == "gene")
         {
             if(!stRT.vRExon.empty()) // save the last transcript
@@ -156,6 +169,7 @@ bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
             stRGene.bRC = bRC;
             stRGene.strChromoson = strChromoson;
             stRGene.strID = strGeneID;
+            stRGene.strBioType = strGeneBioType;
             stRGene.strName = strGeneName;
         }
         else if(strType == "transcript")
@@ -198,6 +212,17 @@ bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
         stRGene.Refresh();
     }
 
+    ///--> Try to Fill the missing part
+    if(!vChrom.empty())
+    {
+        int iStartChrom = atoi(vChrom.begin()->strName.c_str()) - 1;
+        St_Row_Chrom stRChrom;
+        for(int i=0 ; i<iStartChrom; i++)
+        {
+            vChrom.insert(vChrom.begin(), stRChrom);
+        }
+    }
+
     ///---------> we try to erase the gene with "-" direction           
     /*
     for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
@@ -215,50 +240,52 @@ bool ClsGTFParse::ReadGTF(vector<St_Row_Chrom>& vChrom)
     */
     ///<---------
 
-    /*
-    ofstream ofs;  
-    ofs.open("./gtf_brif.txt");
 
-    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
-    {
-        ofs << "Chromoson Name: " << itrChrom->strName << endl;
-        for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin(); itrGene != itrChrom->vRG.end(); itrGene++)
-        {
-            ofs << "\t" << "Gene ID: " << itrGene->strID << " | " << "Name: " << itrGene->strName << " " << (itrGene->bRC ? "-" : "+") << endl;
+//    ofstream ofs;
+//    ofs.open("./gtf_brif.txt");
 
-            for(vector<St_Raw_Transcript>::iterator itrRT = itrGene->vRT.begin(); itrRT != itrGene->vRT.end(); itrRT++)
-            {
-                ofs << "\t\t" << "Transcript ID: " << itrRT->strID << " --- " << IntToStr(itrRT->iStart)
-                    << " | " << IntToStr(itrRT->iEnd) << " " << (itrRT->bRC ? "-" : "+") << endl;
+//    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
+//    {
+//        ofs << "Chromoson Name: " << itrChrom->strName << endl;
+//        for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin(); itrGene != itrChrom->vRG.end(); itrGene++)
+//        {
+//            ofs << "\t" << "Gene ID: " << itrGene->strID << " | " << "Name: " << itrGene->strName << " " << (itrGene->bRC ? "-" : "+") << endl;
 
-                int iIndex = 0;
-                for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin(); itrExon != itrRT->vRExon.end(); itrExon++)
-                {
-                    ofs << "\t\t\t" << "Exon" << IntToStr(iIndex) << ": "<< IntToStr(itrExon->iStart)
-                        << " | " << IntToStr(itrExon->iEnd) << " " << (itrExon->bRC ? "-" : "+") << endl;
-                    iIndex++;
-                }
-            }
-        }
-    }
+//            for(vector<St_Raw_Transcript>::iterator itrRT = itrGene->vRT.begin(); itrRT != itrGene->vRT.end(); itrRT++)
+//            {
+//                ofs << "\t\t" << "Transcript ID: " << itrRT->strID << " --- " << IntToStr(itrRT->iStart)
+//                    << " | " << IntToStr(itrRT->iEnd) << " " << (itrRT->bRC ? "-" : "+") << endl;
 
-    //Cout the statistic result
-    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
-    {
-         ofs << "Chromoson Name: " << itrChrom->strName << endl;
-         ofs << "\t" << "Gene Num: " << IntToStr(itrChrom->vRG.size()) << endl;
-         for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin(); itrGene != itrChrom->vRG.end(); itrGene++)
-         {
-            ofs << IntToStr(itrGene->vRT.size()) << "  ";
-         }
-    }
+//                int iIndex = 0;
+//                for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin(); itrExon != itrRT->vRExon.end(); itrExon++)
+//                {
+//                    ofs << "\t\t\t" << "Exon" << IntToStr(iIndex) << ": "<< IntToStr(itrExon->iStart)
+//                        << " | " << IntToStr(itrExon->iEnd) << " " << (itrExon->bRC ? "-" : "+") << endl;
+//                    iIndex++;
+//                }
+//            }
+//        }
+//    }
 
-    ofs.close();*/
+//    //Cout the statistic result
+//    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
+//    {
+//         ofs << "Chromoson Name: " << itrChrom->strName << endl;
+//         ofs << "\t" << "Gene Num: " << IntToStr(itrChrom->vRG.size()) << endl;
+//         for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin(); itrGene != itrChrom->vRG.end(); itrGene++)
+//         {
+//            ofs << IntToStr(itrGene->vRT.size()) << "  ";
+//         }
+//         ofs << endl << endl;
+//    }
+
+//    ofs.close();
     return true;
 }
 
 //-->The format of this "RefRNA" is identified by us!!!
-void ClsGTFParse::GetRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, bool bExportSeq)
+void ClsGTFParse::GetRNARef(string strRNARefPath, string strChromName,
+                            vector<St_Raw_Gene>& vGenes, bool bExportSeq)
 {
     //Read DNA Ref
     ClsFastaReader* pFastaReader = new ClsFastaReader();
@@ -271,21 +298,26 @@ void ClsGTFParse::GetRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, b
     ofs.open(strRNARefPath.c_str());
 
     St_Fasta* pFasta = NULL;
-    for(vector<St_Raw_Gene>::iterator itr = vGenes.begin(); itr != vGenes.end(); itr++)
-    {
-        for(vector<St_Fasta>::iterator itrRef = vFasta.begin(); itrRef != vFasta.end(); itrRef++)
-        {
-            //get the chromson ID:
-            string strRefID = itrRef->strName.substr(0, itrRef->strName.find(" "));
-            if(strRefID == itr->strChromoson)
-            {
-                pFasta = &(*itrRef);
-                break;
-            }
-        }
 
-        if(pFasta == NULL)
-            continue;
+    for(vector<St_Fasta>::iterator itrRef = vFasta.begin(); itrRef != vFasta.end(); itrRef++)
+    {
+        //get the chromson ID:
+        string strRefID = itrRef->strName.substr(0, itrRef->strName.find(" "));
+        if(itrRef->strName.find(" ") == string::npos)
+            strRefID = itrRef->strName;
+
+        if(strRefID == strChromName)
+        {
+            pFasta = &(*itrRef);
+            break;
+        }
+    }
+
+    if(pFasta == NULL)
+        return;
+
+    for(vector<St_Raw_Gene>::iterator itr = vGenes.begin(); itr != vGenes.end(); itr++)
+    {        
 
         for(vector<St_Raw_Transcript>::iterator itrRT = itr->vRT.begin(); itrRT != itr->vRT.end(); itrRT++)
         {
@@ -431,6 +463,7 @@ void ClsGTFParse::LoadRNARef(string strRNARefPath, vector<St_Raw_Gene>& vGenes, 
 }
 void ClsGTFParse::GetTagValue(vector<St_Row_Chrom>& vChrom) //This Tag means: the cicular splicing tag
 {    
+    //cout << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>GetTagValue<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" << endl;
     //Read DNN Reference
     //Read DNA Ref
     ClsFastaReader* pFastaReader = new ClsFastaReader();
@@ -456,17 +489,25 @@ void ClsGTFParse::GetTagValue(vector<St_Row_Chrom>& vChrom) //This Tag means: th
                 strRefName = itrRef->strName;
             else
                 strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));
+
             //cout << "strRefName: " << strRefName << endl;
+            //cout << "itrChrom->strName" << itrChrom->strName << endl;
 
             if(strRefName == itrChrom->strName)
             {
                 pCurRefFa = &(*itrRef);
+
+//                ///For Debug -->
+//                cout << "strRefName       : " << itrRef->strName << endl;
+//                cout << "itrChrom->strName: " << itrChrom->strName << endl;
+//                ///<---
+
                 break;
             }
         }
         if(pCurRefFa == NULL)
         {
-            cout << "Do not find related reference chromosone: " << itrChrom->strName << endl;
+            //cout << "Do not find related reference chromosone: " << itrChrom->strName << endl;
             continue;
         }
 
@@ -605,33 +646,73 @@ void ClsGTFParse::GetTagValue(vector<St_Row_Chrom>& vChrom) //This Tag means: th
         }
     }
 
-    //Print Out the Collection Result    
+#ifdef PRINGTFSEQ
+    //Print Out the Collection Result
+    cout << "Output gtf_brif.txt with Seq Info >>>>>>>>>>>>>>>>>>>" << endl;
     ofstream ofs;
     ofs.open("./gtf_brif.txt");
 
-    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
+    int iChromIndex = 0;
+    for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end();
+        itrChrom++, iChromIndex++)
     {
-        ofs << "Chromoson Name: " << itrChrom->strName << endl;
-        for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin(); itrGene != itrChrom->vRG.end(); itrGene++)
+        ///Find related reference file --->
+        St_Fasta* pCurRefFa = NULL;
+        for(vector<St_Fasta>::iterator itrRef = vFasta.begin(); itrRef != vFasta.end(); itrRef++)
         {
-            ofs << "\t" << "Gene ID: " << itrGene->strID << " | " << "Name: " << itrGene->strName << " " << (itrGene->bRC ? "-" : "+") << endl;
+            cout << itrRef->strName << endl;
+            string strRefName = "";
+            if(itrRef->strName.find(' ') == string::npos)
+                strRefName = itrRef->strName;
+            else
+                strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));
 
-            for(vector<St_Raw_Transcript>::iterator itrRT = itrGene->vRT.begin(); itrRT != itrGene->vRT.end(); itrRT++)
+            cout << "strRefName: " << strRefName << endl;
+            cout << "itrChrom->strName" << itrChrom->strName << endl;
+
+            if(strRefName == itrChrom->strName)
             {
-                ofs << "\t\t" << "Transcript ID: " << itrRT->strID << " --- " << IntToStr(itrRT->iStart)
+                pCurRefFa = &(*itrRef);
+                break;
+            }
+        }
+        if(pCurRefFa == NULL)
+        {
+            cout << "Do not find related reference chromosone: " << itrChrom->strName << endl;
+            continue;
+        }
+        ///<----
+
+        ofs << iChromIndex << " " << "Chromoson Name: " << itrChrom->strName << endl;
+        int iGeneIndex = 0;
+        for(vector<St_Raw_Gene>::iterator itrGene = itrChrom->vRG.begin(); itrGene != itrChrom->vRG.end();
+            itrGene++, iGeneIndex++)
+        {
+            ofs << "\t" << iGeneIndex << " " <<"Gene ID: " << itrGene->strID << " | " << "Name: " << itrGene->strName << " " << (itrGene->bRC ? "-" : "+") << endl;
+
+            int iTranscriptIndex= 0;
+            for(vector<St_Raw_Transcript>::iterator itrRT = itrGene->vRT.begin(); itrRT != itrGene->vRT.end();
+                itrRT++, iTranscriptIndex++)
+            {
+                ofs << "\t\t" << iTranscriptIndex << " " << "Transcript ID: " << itrRT->strID << " --- " << IntToStr(itrRT->iStart)
                     << " | " << IntToStr(itrRT->iEnd) << " " << (itrRT->bRC ? "-" : "+") << endl;
 
                 int iIndex = 0;
                 for(vector<St_Raw_Exon>::iterator itrExon = itrRT->vRExon.begin(); itrExon != itrRT->vRExon.end(); itrExon++)
                 {
-                    ofs << "\t\t\t" << "Exon" << IntToStr(iIndex) << ": "<< itrExon->strHead2Bp
+                    ofs << "\t\t\t" << "Exon " << IntToStr(iIndex) << ": "<< itrExon->strHead2Bp
                         << " | " << itrExon->strTail2Bp << " " << (itrExon->bRC ? "-" : "+")
                         << "   <" << IntToStr(itrExon->iStart) << ", " << IntToStr(itrExon->iEnd) << ">"
                         << " Len: " << IntToStr(abs(itrExon->iEnd - itrExon->iStart)) << endl;
 
                     //-->Display Exon Sequence
                     ofs << "Seq:" << endl;
-                    string strExonSeq = vFasta[atoi(itrChrom->strName.c_str()) - 1].strSeq.substr(itrExon->iStart-1, itrExon->GetLength());
+
+                    string strExonSeq = "Nil";
+                    if(pCurRefFa != NULL)
+                    {
+                        strExonSeq = pCurRefFa->strSeq.substr(itrExon->iStart-1, itrExon->GetLength());
+                    }
                     DisplayString(ofs, strExonSeq);
                     ofs << endl;
                     //<--
@@ -642,10 +723,11 @@ void ClsGTFParse::GetTagValue(vector<St_Row_Chrom>& vChrom) //This Tag means: th
         }
     }
 
+    ofs.close();
+#endif
+
     //release reference sequence
     vFasta.clear();
-
-    ofs.close();
 }
 
 //void ClsGTFParse::ColletcPossibleCRNA(vector<St_Raw_Gene>& vGenes)

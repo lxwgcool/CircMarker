@@ -77,6 +77,7 @@ string ClsBWA::CreateBamBySingleReads(string& strRefPath, string& strReadsPath,
     {
         strBamTools = "../../ShareLibrary/bamtools/bin/bamtools";
     }
+
     if(bSortByName)
         strCmd = strBamTools + " sort -in " + strBamPath + " -out " +
                  strSortedBamPath + " -byname";
@@ -100,13 +101,18 @@ string ClsBWA::CreateBamBySingleReads(string& strRefPath, string& strReadsPath,
 }
 
 //do not need to add suffix of Bam_File_Name_Customize
-string ClsBWA::CreateBamByPEReads(string& strRefPath, string& strReads1Path, string& strReads2Path,                                  
+string ClsBWA::CreateBamByPEReads(string& strRefPath, string& strReads1Path, string& strReads2Path,
                                   bool bSortByName, string strBamFolder,
                                   bool bMapAll, bool bLooseMatch,
                                   string strBamFileNameCustmize, int iThreadNum, bool bUseSystemLib)
 {
     string strCmd = "";
     string strRootPath = GetHigherFolderPath(get_current_dir_name());
+
+    cout << "-------->" << endl;
+    cout << GetHigherFolderPath(get_current_dir_name()) << endl;
+    cout << "<--------" << endl;
+
     string strBWAPath = "bwa";
     if(!bUseSystemLib)
     {
@@ -162,6 +168,9 @@ string ClsBWA::CreateBamByPEReads(string& strRefPath, string& strReads1Path, str
             strCmd = strBWAPath + " mem " + strThread +
                      strRefPath + " " + strReads1Path + " " + strReads2Path + " > " + strSamPath;
     }
+    cout << endl << "------" << endl;
+    cout << strCmd << endl << "------" << endl << endl;
+
     system(strCmd.c_str());
 
     //5: transfer sam to bam
@@ -174,13 +183,14 @@ string ClsBWA::CreateBamByPEReads(string& strRefPath, string& strReads1Path, str
     system(strCmd.c_str());
 
     //6: Sort bam file
+    string strBamTools = "bamtools";
     string strSortedBamPath = strRootPath + "Read.sorted.bam";
     if(strBamFileNameCustmize != "")
     {
         strSortedBamPath = strRootPath + strBamFileNameCustmize + ".sorted.bam";
     }
 
-    string strBamTools = "bamtools";
+
     if(!bUseSystemLib)
     {
         strBamTools = "../../ShareLibrary/bamtools/bin/bamtools";

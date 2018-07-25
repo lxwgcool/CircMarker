@@ -107,15 +107,20 @@ public:
     ~ClsKmerTable();
 
 public:
-    void CreateKmerTable(string strDNARef, int iReadsLen, float fKmerRatio, vector<St_Row_Chrom>& vChrom);
-    map<unsigned int, vector<St_PosInfo> >& GetKT();
+    void CreateKmerTable(map<unsigned int, vector<St_PosInfo> >& mpKT,
+                         string strDNARef, int iReadsLen, float fKmerRatio,
+                         St_Row_Chrom* pRowChrom, St_Fasta* pRef, int iChromIndex);
+
+//    map<unsigned int, vector<St_PosInfo> >& GetKT();
 
 private:
-    void CollectKmerInfo(St_Fasta* pCurRefFa, St_Raw_Exon* pExon, St_PosInfo& stKmerInfo, int iBoundLen);
+    void CollectKmerInfo( map<unsigned int, vector<St_PosInfo> >& mpKT,
+                          St_Fasta* pCurRefFa, St_Raw_Exon* pExon, St_PosInfo& stKmerInfo, int iBoundLen);
 
 private:
-    void InsertCurKmer(string strCurKmer, St_PosInfo& stPosInfo);
-    map<unsigned int, vector<St_PosInfo> > m_mpKT;
+    void InsertCurKmer(map<unsigned int, vector<St_PosInfo> >& mpKT,
+                       string strCurKmer, St_PosInfo& stPosInfo);
+//    map<unsigned int, vector<St_PosInfo> > m_mpKT;
 };
 
 #endif // CLSKMERTABLE_H

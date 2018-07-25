@@ -8,6 +8,7 @@
 #include "clsresultcomparison.h"
 #include "clstroubleshoot.h"
 #include "string.h"
+#include <unistd.h>
 using namespace std;
 
 void Test(string strFaPath);
@@ -17,9 +18,14 @@ void Test(string strFaPath);
 //#define SIMULATION_COMPARISON
 //#define CHECK_INTERSECTION
 
+void FindCircRNA(St_Config& stConfig, ClsKmerTable* pKT, ClsFindCandidate* pFindCandi,
+                 vector<St_Fastq>& vFastq, vector<St_Row_Chrom>& vChrom, vector<St_Fasta>& vFasta);
+
 int main(int argc, char **argv)
 {
-    if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
+    if(argc == 1 ||
+       strcmp(argv[1], "-h") == 0 ||
+       strcmp(argv[1], "--help") == 0)
     {
         cout << "**********************************" << endl;
         cout << "How to use CircMarker" << endl;
@@ -60,19 +66,31 @@ int main(int argc, char **argv)
     delete pGTFParse;
     pGTFParse = NULL;
 
+    cout << "The first vChrom Size: " << vChrom.size() << endl;
+
+    //3.0 Read Reference File
+    //Read Fasta:
+    ClsFastaReader* pFastaReader = new ClsFastaReader();
+    vector<St_Fasta> vFasta;
+    pFastaReader->ReadFastaRegular(stConfig.strRefPath, vFasta);
+    delete pFastaReader;
+    pFastaReader = NULL;
+
+
     //3: Create Kmer Table-----------------
-    ClsKmerTable* pKT = new ClsKmerTable();
-#ifndef ONLY_DO_COMPARISON
-    cout << endl << "--------------CreateKmerTable--------------" << endl << endl;
-    pKT->CreateKmerTable(stConfig.strRefPath, stConfig.iReadsLen, stConfig.fKmerRatio, vChrom);
-#endif
+    ClsKmerTable* pKT = new ClsKmerTable();    
 
     //4: Check Hitting
     ClsFindCandidate* pFindCandi = new ClsFindCandidate();
+
+    //1: Read Reads
+    vector<St_Fastq> vFastq;
+    pFindCandi->AssembleReads(stConfig.strReads1Path, stConfig.strReads2Path, vFastq);
+
+
 #ifndef ONLY_DO_COMPARISON
-    pFindCandi->CheckHitting(stConfig.strReads1Path, stConfig.strReads2Path,
-                             stConfig.iMinSupportReads, stConfig.fKmerRatio,
-                             pKT->GetKT(), vChrom);
+    FindCircRNA(stConfig, pKT, pFindCandi, vFastq, vChrom, vFasta);
+
 #endif
 //#ifdef ONLY_DO_COMPARISON
     //5: simple testing --> for pre-verification --> Go!!
@@ -180,6 +198,191 @@ int main(int argc, char **argv)
     pFindCandi = NULL;
 
     return 0;
+}
+
+struct St_FindCircKT
+{
+    St_Fasta* pRef;
+    ClsKmerTable* pKT;
+    vector<St_Fastq>* pReads;
+    St_Row_Chrom* pRowChrom;
+    vector<St_Row_Chrom>* pWholeChrom;
+    ClsFindCandidate* pFindCandi;
+    St_Config* pConfig;
+    string strChromName;
+    int iChromIndex;
+
+    St_FindCircKT()
+    {
+        Reset();
+    }
+
+    void Init(St_Fasta* pV1, ClsKmerTable* pV2, vector<St_Fastq>* pV3,
+              St_Row_Chrom* pV4, vector<St_Row_Chrom>* pV5,
+              ClsFindCandidate* pV6, St_Config* pV7, string strV8, int iV9)
+    {
+        pRef = pV1;
+        pKT = pV2;
+        pReads = pV3;
+        pRowChrom = pV4;
+        pWholeChrom = pV5;
+        pFindCandi = pV6;
+        pConfig = pV7;
+        strChromName = strV8;
+        iChromIndex = iV9;
+    }
+
+    void Reset()
+    {
+        pRef = NULL;
+        pKT = NULL;
+        pReads = NULL;
+        pRowChrom = NULL;
+        pWholeChrom = NULL;
+        pFindCandi = NULL;
+        pConfig = NULL;
+        strChromName = "";
+        iChromIndex = -1;
+    }
+};
+
+void* FindCircForSingleChrom(void* pValue)
+{
+    cout << "main() : creating thread " << endl;
+
+    St_FindCircKT* pFindCircKT = (St_FindCircKT*)pValue;
+
+    map<unsigned int, vector<St_PosInfo> > mpKT;
+    pFindCircKT->pKT->CreateKmerTable( mpKT,
+                                       pFindCircKT->pConfig->strRefPath, pFindCircKT->pConfig->iReadsLen,
+                                       pFindCircKT->pConfig->fKmerRatio,
+                                       pFindCircKT->pRowChrom, pFindCircKT->pRef, pFindCircKT->iChromIndex);
+
+    pFindCircKT->pFindCandi->CheckHitting(pFindCircKT->pConfig->iMinSupportReads,
+                                          pFindCircKT->pConfig->fKmerRatio, pFindCircKT->pConfig->iReadsLen,
+                                          mpKT, *(pFindCircKT->pWholeChrom),
+                                          *(pFindCircKT->pReads), pFindCircKT->strChromName);
+
+    pthread_exit(NULL);
+}
+
+void FindCircRNA(St_Config& stConfig, ClsKmerTable* pKT, ClsFindCandidate* pFindCandi,
+                 vector<St_Fastq>& vFastq, vector<St_Row_Chrom>& vChrom, vector<St_Fasta>& vFasta)
+{
+
+    cout << "The second vChrom Size: " << vChrom.size() << endl;
+
+    cout << "Step 3: Detect Circular RNA" << endl;
+    string strCmd = (string)"mkdir -p " + get_current_dir_name() + "/Detection_Result";
+    system(strCmd.c_str());
+    strCmd = "rm ./Detection_Result/*";
+    system(strCmd.c_str());
+
+    int iThreadNum = 0;
+    vector<St_FindCircKT> vFindCircKT;
+    St_FindCircKT stFindCircKT;
+    for(vector<St_Fasta>::iterator itrRef = vFasta.begin(); itrRef != vFasta.end(); itrRef++)
+    {
+        //cout << itrRef->strName << endl;
+        string strRefName = "";
+        if(itrRef->strName.find(' ') == string::npos)
+            strRefName = itrRef->strName;
+        else
+            strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));
+
+        int iChromIndex = 0;
+        for(vector<St_Row_Chrom>::iterator itrChrom = vChrom.begin(); itrChrom != vChrom.end(); itrChrom++)
+        {
+            if(strRefName == itrChrom->strName)
+            {
+//                map<unsigned int, vector<St_PosInfo> > mpKT;
+//                pKT->CreateKmerTable(mpKT, stConfig.strRefPath, stConfig.iReadsLen, stConfig.fKmerRatio,
+//                                     &(*itrChrom), &(*itrRef), iChromIndex);
+
+//                //1: Collect Hit Time and Info Order
+//                cout << "Collect Hit Time and Info Order" << endl;
+//                cout << "mpKT size: " << mpKT.size() << endl;
+//                cout << "We got size!" << endl;
+
+//                int i = 0;
+//                for(map<unsigned int, vector<St_PosInfo> >::iterator itr = mpKT.begin(); itr != mpKT.end(); itr++)
+//                {
+//                    if(i > 10)
+//                        break;
+
+//                    cout << "---" << endl;
+//                    cout << itr->first << endl;
+//                    cout << IntToStr(itr->second.begin()->ucChromIndex)
+//                         << " --- " << IntToStr(itr->second.begin()->ucTranscriptIndex) << endl;
+//                    cout << "---" << endl;
+
+//                    i++;
+//                }
+
+                //-->Init St_FindCircKT
+                stFindCircKT.Reset();
+                stFindCircKT.Init(&(*itrRef), pKT, &vFastq, &(*itrChrom), &vChrom,
+                                  pFindCandi, &stConfig, strRefName, iChromIndex);
+                vFindCircKT.push_back(stFindCircKT);
+                iThreadNum++;
+                break;
+            }
+            else
+                iChromIndex++;
+        }
+    }
+
+    cout << "The third vChrom Size: " << vChrom.size() << endl;
+
+    //Step 1: Define how may threads you want to use
+    pthread_t threads[iThreadNum];
+    pthread_attr_t attr;
+
+    //Step 2: Initialize and set thread joinable
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    //Step 3: Do the main body of multiple threads function
+    cout << "Thread Num: " << iThreadNum << endl;
+    for(int i = 0; i < iThreadNum; i++)
+    {
+        //cout << "main() : creating thread, " << i << endl;
+
+        int rc = pthread_create(&threads[i], NULL, FindCircForSingleChrom, (void *)&vFindCircKT[i]);
+
+        if(rc)
+        {
+            cout << "Error:unable to create thread," << rc << endl;
+            exit(-1);
+        }
+    }
+
+    //4: free attribute and wait for the other threads
+    pthread_attr_destroy(&attr);
+
+    void *status;
+    //5: Join those threads together --> to make sure the remaining part of the code will be run only after those threads been finished
+    for(int i = 0; i < iThreadNum; i++)
+    {
+        int rc = pthread_join(threads[i], &status);
+        if (rc)
+        {
+            cout << "Error:unable to join," << rc << endl;
+            exit(-1);
+        }
+
+        //cout << "Main: completed thread id :" << i ;
+        //cout << "  exiting with status :" << status << endl;
+    }
+
+    //6: Do the remaning thing
+    cout << endl << "ALL SET!!!" << endl;
+
+    cout << "Combine the result together" << endl;
+    strCmd = "rm ./Detection_Result/Brief_sum.txt";
+    system(strCmd.c_str());
+    strCmd = "cat ./Detection_Result/Brief* > ./Detection_Result/Brief_sum.txt";
+    system(strCmd.c_str());
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

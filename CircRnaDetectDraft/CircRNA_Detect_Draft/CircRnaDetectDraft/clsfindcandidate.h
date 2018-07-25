@@ -162,10 +162,12 @@ public:
     ClsFindCandidate();
 
 public:
-    void CheckHitting(string strReads1Path, string strReads2Path,
-                      int iMinSupportReads, float fKmerRatio,
+    void CheckHitting(int iMinSupportReads, float fKmerRatio, int iReadsLen,
                       map<unsigned int, vector<St_PosInfo> >& mpKT,
-                      vector<St_Row_Chrom>& vChrom); // Check Hitting
+                      vector<St_Row_Chrom>& vChrom,
+                      vector<St_Fastq>& vFastq, string strChromName); // Check Hitting
+
+    void AssembleReads(string strReads1Path, string strReads2Path, vector<St_Fastq>& vFastq);
 
 private:
     bool CheckSampling(unsigned int* arrySamplingKmer,
@@ -173,13 +175,19 @@ private:
 
     void CheckHitForCurReads(string& strSeq, bool bSeqRC,
                              map<unsigned int, vector<St_PosInfo> >& mpKT,
-                             vector<St_Row_Chrom>& vChrom, float fKmerRatio);
-    bool CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen, vector<St_Row_Chrom>& vChrom);
-    bool CheckRegularCircRNA(St_HitCase* pHitCase, vector<St_Row_Chrom>& vChrom);
+                             vector<St_Row_Chrom>& vChrom, float fKmerRatio,
+                             vector<St_Candidate>& vSelfCircCandi,
+                             vector<St_Candidate>& vRegCircCandi);
 
-    void RefineCandiate(int iMinSupportReads);
+    bool CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen,
+                          vector<St_Row_Chrom>& vChrom, vector<St_Candidate>& vSelfCircCandi);
 
-    void AssembleReads(string strReads1Path, string strReads2Path, vector<St_Fastq>& vFastq);
+    bool CheckRegularCircRNA(St_HitCase* pHitCase, vector<St_Row_Chrom>& vChrom,
+                             St_Candidate& stCandiRecord, vector<St_Candidate>& vRegCircCandi);
+
+    void RefineCandiate(int iMinSupportReads,
+                        vector<St_Candidate>& vSelfCircCandi,
+                        vector<St_Candidate>& vRegCircCandi, string strChromName);
 
     bool CheckHitNum(string& strSeq, float fKmerRatio, St_HitCase* pHitCase);
     bool CheckHitPart(vector<St_Row_Chrom>& vChrom, St_HitCase* pHitCase,
@@ -195,8 +203,8 @@ private:
     //map<St_Candidate, int> m_mpRegCircCandi; // int is the number of support reads
 
     //Use vector to check if map works fine
-    vector<St_Candidate> m_vSelfCircCandi;
-    vector<St_Candidate> m_vRegCircCandi;
+//    vector<St_Candidate> m_vSelfCircCandi;
+//    vector<St_Candidate> m_vRegCircCandi;
 
 private:
     int m_iTotalNum;

@@ -1933,6 +1933,7 @@ void ClsResultComparison::ParseSimulationResult(string strStdPath, vector<St_Can
     while(!ifs.eof()) // check if reached the end
     {
         getline(ifs, strLine);
+
         //Get Chromosone Name
         int iStartPos = 0;
         int iEndPos = strLine.find('\t', iStartPos);

@@ -13,12 +13,15 @@ ClsFastqReader::ClsFastqReader()
 
 void ClsFastqReader::ReadFastqFile(string strPath, vector<St_Fastq>& vFastq, bool bToUpperCase)
 {
-    vFastq.clear();
+    //vFastq.clear();
     St_Fastq stFastq;
 
     gzFile fp;
     kseq_t *seq;
     int l;
+
+    if(strPath == "")
+        return;
 
     if(access(strPath.c_str(), 0) != 0) //File do not existed
     {
