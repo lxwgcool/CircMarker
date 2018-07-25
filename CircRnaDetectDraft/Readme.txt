@@ -62,3 +62,6 @@ Enjoy
 Best
 Xin
 
+=========
+Update:
+1: New feature: support circular RNA detection crouse the whole genome  --- July.24.2018
