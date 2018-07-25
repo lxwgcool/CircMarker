@@ -68,3 +68,4 @@ Xin
 =========
 Update:
 1: New feature: support circular RNA detection crouse the whole genome  --- July.24.2018
+2: Delete the compiling option "-static" to fit the non root user --- July.25.2018
