@@ -6,6 +6,9 @@ $ cd CircMarker/CircRnaDetectDraft/CircRNA_Detect_Draft/MakeFile/
 $ make clean
 $ make
 
+Notice: 
+Since CircMaker depends on zlib, please install zlib first (or load the zlib module first if you compile it in HPC).
+
 The executable file is named "CircRnaDetectDraft"
 
 
