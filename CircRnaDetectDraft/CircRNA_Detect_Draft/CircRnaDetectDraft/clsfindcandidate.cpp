@@ -464,7 +464,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
     for(vector<St_HitCase>::iterator itr = vCases.begin(); itr != vCases.end(); itr++)
     {
 
-//#ifdef DEBUG
+#ifdef DEBUG
         cout << IntToStr(itr->GetHitSum()) << " --> " ;
         //output the related exons
         for(vector<St_HitExon>::iterator itrExon = itr->vHitExons.begin();
@@ -476,7 +476,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
                  << IntToStr(stExon.GetLength()) << ", ";
         }
         cout << endl;
-//#endif
+#endif
 
         if(pHitCase == NULL)
             pHitCase = &(*itr);
@@ -537,7 +537,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
             pHitCase->vHitExons.erase(itr);
     }
 
-//#ifdef DEBUG
+#ifdef DEBUG
     //Cout Best Hit case
     cout << endl << "Best Hit Case --> " << endl;
     cout << IntToStr(pHitCase->GetHitSum()) << " --> " ;
@@ -550,7 +550,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
              << IntToStr(stExon.GetLength()) << ", ";
     }
     cout << "<----" << endl;
-//#endif
+#endif
 
     //2: Make filter based on the TWO threshoulds
     //Threashold 1: 针对hit多少去进行抉择: Get threshold --> fKmerRatio
@@ -1699,7 +1699,8 @@ void ClsFindCandidate::RefineCandiate(int iMinSupportReads,
         ofsBrief << strChromName << " "
                  << IntToStr(itr->iStartPos) << " " << IntToStr(itr->iEndPos) << " "
                  << IntToStr(itr->iSupportNum) << " "
-                 << itr->strTag << " "
+                 //<< itr->strTag << " "
+                 << itr->GetStrand() << " "
                  << "S" << endl;
     }
     /*for(map<St_Candidate, int>::iterator itr = m_mpSelfCircCandi.begin(); itr != m_mpSelfCircCandi.end(); itr++)
@@ -1724,7 +1725,8 @@ void ClsFindCandidate::RefineCandiate(int iMinSupportReads,
         ofsBrief << strChromName << " "
                  << IntToStr(itr->iStartPos) << " " << IntToStr(itr->iEndPos) << " "
                  << IntToStr(itr->iSupportNum) << " "
-                 << itr->strTag << " "
+                 //<< itr->strTag << " "
+                 << itr->GetStrand() << " "
                  << "R" << endl;
     }
     /*

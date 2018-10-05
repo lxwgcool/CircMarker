@@ -95,6 +95,14 @@ struct St_Candidate
             }
         }*/
     }
+
+    string GetStrand()
+    {
+        if(this->bRC)
+            return "-";
+        else
+            return "+";
+    }
 };
 
 //---------->
