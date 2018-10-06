@@ -1107,7 +1107,7 @@ bool ClsFindCandidate::CheckSelfCircRNA(St_HitCase* pHitCase, int iReadLen,
         //{
             //我们认为是一个候选者
             //注意这个地方: 因为我们是找circular rna的jucntion，因此circular rna的start应该是原始exon的tail，反之毅然
-            St_Candidate stCurCandi(stPI.ucChromIndex, stCurExon.iEnd, stCurExon.iStart);
+            St_Candidate stCurCandi(stPI.ucChromIndex, stCurExon.iEnd, stCurExon.iStart, 1, stCurExon.bRC);
             stCurCandi.SetCircType(ctSelf);
 
             //--->For vector
@@ -1342,6 +1342,7 @@ bool ClsFindCandidate::CheckRegularCircRNA(St_HitCase* pHitCase,
 #endif       
 
         St_Candidate stCurCandi;
+        stCurCandi.bRC = bRC;
         stCurCandi.SetCircType(ctRegular);
         if(!bRC) //如果是正向
         {                        
