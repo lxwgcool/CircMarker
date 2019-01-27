@@ -7,7 +7,8 @@ Please contect: xin.li@uconn.edu if you have any questions.
 ==============
 Circular RNA Detection Tool
 
-The author is so tired those days. I will back to here to create the user manual. 
+Please cite my paper: 
+https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-018-4926-0
 
 Have a nice day for any tourists in this page. 
 
