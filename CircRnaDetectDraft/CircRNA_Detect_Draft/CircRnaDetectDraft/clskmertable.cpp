@@ -81,14 +81,17 @@ void ClsKmerTable::CollectKmerInfo(map<unsigned int, vector<St_PosInfo> >& mpKT,
     {
         //stPosInfo.cPart = 'U';
         int iSplitPoint = (pExon->GetLength() - KMERLEN)/2;
-        for(int i = pExon->iStart - 1; i<= pExon->iEnd - KMERLEN; i++)  // Notice: 在这里我们的start 和 end 都属于 真实的position，也就是从0开始的
-        {            
-            if(i < (pExon->iStart - 1) + iSplitPoint)
-                stPosInfo.cPart = 'S';
-            else
-                stPosInfo.cPart = 'E';
-            string strCurKmer = pCurRefFa->strSeq.substr(i, KMERLEN);
-            InsertCurKmer(mpKT, strCurKmer, stPosInfo);
+        if(iSplitPoint > 0)
+        {
+            for(int i = pExon->iStart - 1; i<= pExon->iEnd - KMERLEN; i++)  // Notice: 在这里我们的start 和 end 都属于 真实的position，也就是从0开始的
+            {
+                if(i < (pExon->iStart - 1) + iSplitPoint)
+                    stPosInfo.cPart = 'S';
+                else
+                    stPosInfo.cPart = 'E';
+                string strCurKmer = pCurRefFa->strSeq.substr(i, KMERLEN);
+                InsertCurKmer(mpKT, strCurKmer, stPosInfo);
+            }
         }
     }
     else // Exon的长度足够去进行左右两边的采样 --> 那我们开始吧
