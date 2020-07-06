@@ -116,9 +116,15 @@ int main(int argc, char **argv)
     {
         string strGtfChromExample = vChrom[0].strName;
         bool bFind = false;
-        for(vector<St_Fasta>::iterator itr = vFasta.begin(); itr != vFasta.end(); itr++)
+        for(vector<St_Fasta>::iterator itrRef = vFasta.begin(); itrRef != vFasta.end(); itrRef++)
         {
-            if(strGtfChromExample == itr->strName)
+            string strRefName = "";
+            if(itrRef->strName.find(' ') == string::npos)
+                strRefName = itrRef->strName;
+            else
+                strRefName = itrRef->strName.substr(0, itrRef->strName.find(' '));
+
+            if(strRefName == strGtfChromExample)
             {
                 bFind = true;
                 break;
@@ -126,7 +132,7 @@ int main(int argc, char **argv)
         }
         if(!bFind)
         {
-            cout << "Error: Ther naming rule of chromosome in annotation file and reference is different!" << endl;
+            cout << "Error: Ther naming rule of chromosome in annotation file and reference is different (please use NCBI/EMSEMBL sequence level style)!" << endl;
             return 0;
         }
     }
