@@ -70,3 +70,32 @@ Xin
 Update:
 1: New feature: support circular RNA detection crouse the whole genome  --- July.24.2018
 2: Delete the compiling option "-static" to fit the non root user --- July.25.2018
+
+07/05/2020
+1: Add new features for checking errors 
+  (1) Check fastq file existence
+  (2) Check fastq file existence
+  (3) Check Annotation file (gtf) existence
+2: Check sequence region names between *.fa and *.gtf files: some users might mistakenly use NCBI/EMSEMBL sequence level style (1,2, ..) for genome reference and UCSC style (chr1, chr2, ..) for gene annotation (Thanks for the suggestion of "TapscottLab"). 
+3: Fix bug: out of index substr
+  (1) CircMarker first sampling 8 kmers from reads to check if current reads may contribute a potential circular RNA. You may get this error if the reads is too short (e.g. after trimmomatic). This bug has been fixed in this version.
+  
+=========  
+Q&A
+Q1: Allow user to define the number of core: circMarker detects the number of available cores and use at least 25 cores. The parallelization is great. But when using shared cluster resources, core usage might be limited to some users
+Comments: 
+If you have enough computing resources in one computing node, you can get the best performance if the number of cores you applied equals to the number of chromosomes in your annotation (e.g. 24 cores for WES). Since circmarker uses multiple threads for parallel computing, all of the cores you requested should be in the same computing node. In another word, the cores across different HPC computing nodes cannot be used by circmarker at the same time. Actually, any multiple threads based software (such as BWA, bcl2fastq) can not use multiple cores across different nodes.
+
+Q2: What's the format of the output and what they represent?
+Comments: 
+For "./Brief_sum.txt"
+Col 1: Chromosme name
+Col 2: CircRNA starting position
+Col 3: CircRNA ending position
+Col 4: Number of reads that support current circular RNA
+Col 5: Strand
+Col 6: Type of Circular RNA
+       a) S: self-circle Case
+       b) R: Regular-circle Case
+
+  
