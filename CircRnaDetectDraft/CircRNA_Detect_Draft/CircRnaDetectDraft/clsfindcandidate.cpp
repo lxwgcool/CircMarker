@@ -121,8 +121,13 @@ void ClsFindCandidate::CheckHitting(int iMinSupportReads, float fKmerRatio, int 
         bool bSeqRC = false;
         for(int i = 0; i < SAMPLINGNUM; i++)
         {
-            string strTmp = itr->strSeq.substr(itr->strSeq.length()*ARRYPOSRATIO[i], KMERLEN);
-            arrySamplingKmer[i] = ConvertKmerToNum32(strTmp);
+            if(itr->strSeq.length()*ARRYPOSRATIO[i] + KMERLEN > itr->strSeq.length())
+                arrySamplingKmer[i] = 0;
+            else
+            {
+                string strTmp = itr->strSeq.substr(itr->strSeq.length()*ARRYPOSRATIO[i], KMERLEN);
+                arrySamplingKmer[i] = ConvertKmerToNum32(strTmp);
+            }
         }
         //   ii) Check how may could be found back in vChrom
         if(CheckSampling(arrySamplingKmer, mpKT))
@@ -133,9 +138,15 @@ void ClsFindCandidate::CheckHitting(int iMinSupportReads, float fKmerRatio, int 
         {
             for(int i = 0; i < SAMPLINGNUM; i++)
             {
-                string strTmp = GetReverseCompelement(itr->strSeq.substr(itr->strSeq.length()*ARRYPOSRATIO[i], KMERLEN));
-                arrySamplingKmer[i] = ConvertKmerToNum32(strTmp);
+                if(itr->strSeq.length()*ARRYPOSRATIO[i] + KMERLEN > itr->strSeq.length())
+                    arrySamplingKmer[i] = 0;
+                else
+                {
+                    string strTmp = GetReverseCompelement(itr->strSeq.substr(itr->strSeq.length()*ARRYPOSRATIO[i], KMERLEN));
+                    arrySamplingKmer[i] = ConvertKmerToNum32(strTmp);
+                }
             }
+
             if(CheckSampling(arrySamplingKmer, mpKT))
             {
                 strCurSeq = GetReverseCompelement(itr->strSeq);
@@ -148,8 +159,11 @@ void ClsFindCandidate::CheckHitting(int iMinSupportReads, float fKmerRatio, int 
         {
             // Go Further Deteciton ->Go
             //cout << strCurSeq << endl;
-            CheckHitForCurReads(strCurSeq, bSeqRC, mpKT, vChrom, fKmerRatio,
-                                vSelfCircCandi, vRegCircCandi);
+            if(strCurSeq.length() > KMERLEN)
+            {
+                CheckHitForCurReads(strCurSeq, bSeqRC, mpKT, vChrom, fKmerRatio,
+                                    vSelfCircCandi, vRegCircCandi);
+            }
         }
     }
 
@@ -281,7 +295,7 @@ void ClsFindCandidate::CheckHitForCurReads(string& strSeq, bool bSeqRC,
 
 //    cout << "Collect Cases" << endl;
     for(unsigned int i = 0 ; i <= (strSeq.length() - KMERLEN + 1); i++)
-    {
+    {        
         string strCurKmer = strSeq.substr(i, KMERLEN);
         unsigned int uiKmer = ConvertKmerToNum32(strCurKmer);
         if(mpKT.find(uiKmer) == mpKT.end())

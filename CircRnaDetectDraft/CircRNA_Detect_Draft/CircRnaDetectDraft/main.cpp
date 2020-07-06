@@ -46,6 +46,36 @@ int main(int argc, char **argv)
     delete pConfig;
     pConfig = NULL;
 
+    //Check if File exists
+    //1: Check ref
+    if(::access(stConfig.strRefPath.c_str(), 0) != 0)
+    {
+        bOk = false;
+        cout << "Error: Reference does not exist!" << endl;
+    }
+
+    //2: Check fastq
+    if(stConfig.strReads1Path != "" &&
+       ::access(stConfig.strReads1Path.c_str(), 0) != 0)
+    {
+        bOk = false;
+        cout << "Error: Reads1 does not exist!" << endl;
+    }
+
+    if(stConfig.strReads2Path != "" &&
+       ::access(stConfig.strReads2Path.c_str(), 0) != 0)
+    {
+        bOk = false;
+        cout << "Error: Reads2 does not exist!" << endl;
+    }
+
+    //3: Check gtf
+    if(::access(stConfig.strGtfPath.c_str(), 0) != 0)
+    {
+        bOk = false;
+        cout << "Error: Annotation file (GTF) does not exist!" << endl;
+    }
+
     if(!bOk)
     {
         return 0;
@@ -76,6 +106,30 @@ int main(int argc, char **argv)
     delete pFastaReader;
     pFastaReader = NULL;
 
+    //Check if reference naming rule (chromosome) is the same as gtf naming rule
+    if(vChrom.empty() || vFasta.empty())
+    {
+        cout << "Error: Invalid Annotation or Reference File (chromosome list is empty)!" << endl;
+        return 0;
+    }
+    else
+    {
+        string strGtfChromExample = vChrom[0].strName;
+        bool bFind = false;
+        for(vector<St_Fasta>::iterator itr = vFasta.begin(); itr != vFasta.end(); itr++)
+        {
+            if(strGtfChromExample == itr->strName)
+            {
+                bFind = true;
+                break;
+            }
+        }
+        if(!bFind)
+        {
+            cout << "Error: Ther naming rule of chromosome in annotation file and reference is different!" << endl;
+            return 0;
+        }
+    }
 
     //3: Create Kmer Table-----------------
     ClsKmerTable* pKT = new ClsKmerTable();    
